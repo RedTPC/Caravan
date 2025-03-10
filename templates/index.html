@@ -1,25 +1,24 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles/styles.css') }}">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Caravan</title>
-</head>
-<body>
-    <h1>Welcome to Caravan!</h1>
+{% extends "base.html" %}
 
+{% block content %}
+
+<body>
+    <nav>
     <!-- Start Game button -->
     <button id="createGameButton">Create Game</button>
 
-    <div id="winnerMessage" style="display: none; font-size: 24px; color: green; text-align: center; margin-top: 20px;"></div>
+    <button id="createAIGameButton">Play VS. AI</button>
+    </nav>
+    
+    <div id="winnerMessage" style="display: none; font-size: 24px; color: green; text-align: center; margin-top: 20px;">
+    </div>
 
     <div id="gameContainer" style="display: none;">
         <div class="hand1">
             <h2>Hand 1</h2>
             <!-- Cards will be added dynamically -->
         </div>
-        
+
         <div class="board">
             <div class="caravans1">
                 <div class="caravan" data-index="0"></div>
@@ -51,7 +50,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="hand2">
             <h2>Hand 2</h2>
             <!-- Cards will be added dynamically -->
@@ -60,8 +59,9 @@
 
     <!-- Socket.IO client -->
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
-    
+
     <!-- Link to the external JavaScript -->
     <script src="static/javascript/app.js"></script>
 </body>
-</html>
+
+{% endblock %}

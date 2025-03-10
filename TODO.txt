@@ -1,3 +1,1 @@
-make queens work
 If playing a number card that matches suit but contradicts the numerical sequence, it resets the sequence. atm it just looks at the last 2 cards
-victory is based on total value of number cards

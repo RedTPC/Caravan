@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/styles.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caravan</title>
+</head>
+
+    <h1>Welcome to Caravan!</h1>
+    <nav>
+    <a href="{{ url_for('index') }}">
+        <button id="index">Home</button>
+    </a>
+    <a href="{{ url_for('login') }}">
+        <button id="login">Login</button>
+    </a>
+    <a href="{{ url_for('register') }}">
+        <button id="register">Register</button>
+    </a>
+    </nav>
+
+
+{% block content %}
+
+{% endblock %}
+
+</html>

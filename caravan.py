@@ -137,11 +137,14 @@ class Game:
         self._caravans2_direction = [None, None, None]
         self._caravans1_suit = [None, None, None]
         self._caravans2_suit = [None, None, None]
+        self.opening_round_filled = [False, False, False, False, False, False] 
         self._discard_pile1 = []
         self._discard_pile2 = []
         self._turn = "1"
         self.numturns = 0
         self._bonus_cards = [] # list of lists (card, caravan_index 1-6, caravan_card_index)
+        self._is_vs_ai = False
+        self.win_status = ""
 
     def ShuffleDecks(self):
         self._deck1.shuffle()
@@ -383,6 +386,25 @@ class Game:
                 self._caravans2_suit[i] = self._board.getCaravan2()[i][-1].getSuit()
 
         print(f"Directions: {self._caravans1_direction, self._caravans2_direction}, Suits: {self._caravans1_suit, self._caravans2_suit}")   
+
+    def make_ai_move(self):
+        if self._turn == "2":  
+            best_move = None
+            best_value = -float("inf")
+
+            for hand_index, card in enumerate(self._hand2.getHand()):
+                for caravan_index, caravan in enumerate(self._board.getCaravan2()):
+                    if self.is_valid_move("2", hand_index, caravan_index):
+                        temp_value = self.evaluate_move("2", hand_index, caravan_index)
+                        
+                        if temp_value > best_value:
+                            best_value = temp_value
+                            best_move = (hand_index, caravan_index)
+
+            if best_move:
+                self.placeCard("2", best_move[0], best_move[1])
+                self.flipTurn()
+
 
 
                 

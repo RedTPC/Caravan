@@ -1,13 +1,32 @@
 document.addEventListener('DOMContentLoaded', function () {
     const socket = io();
     let selectedCard = null;
-    
+
+    socket.on("redirect", function (data) {
+        window.location.href = data.url;  // Redirects to Flask route
+    });
+
 
     // Start & Join Game
     document.getElementById("createGameButton").addEventListener("click", () => {
         console.log("Create game button clicked");
         socket.emit("create_game");
     });
+
+        // Start & Join Game
+    document.getElementById("createAIGameButton").addEventListener("click", () => {
+        console.log("Create AI game button clicked");
+        socket.emit("create_game_ai");
+    });
+
+    function sleep(milliseconds) {
+        var start = new Date().getTime();
+        for (var i = 0; i < 1e7; i++) {
+          if ((new Date().getTime() - start) > milliseconds){
+            break;
+          }
+        }
+      }
 
     // Listen for board updates
     socket.on("game_update", (data) => {
@@ -53,6 +72,17 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById("winnerMessage").style.display = "block";
         } else {
             document.getElementById("winnerMessage").style.display = "none";
+        }
+
+        // IF IT IS A GAME VS AI 
+        if (data.is_vs_ai == true && data.current_turn === "2") {
+            setTimeout(() => {
+                console.log("AI's turn - making move");
+                socket.emit("make_ai_move");
+            }, 1000); 
+
+            console.log("making ai move")
+            socket.emit("make_ai_move");
         }
     });
 
@@ -108,8 +138,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!statusArray) return;
 
         statusArray.forEach((status, index) => {
-            const caravan1 = document.querySelector(`.caravans1 .caravan[data-index="${index}"]`);
-            const caravan2 = document.querySelector(`.caravans2 .caravan[data-index="${index + 3}"]`);
+
+            const isPlayer2 = index >= 3; // Identify if it's player 2's caravan
+            const adjustedIndex = isPlayer2 ? index - 3 : index; // Adjust index for player 2's caravans
+
+            const caravan1 = document.querySelector(`.caravans1 .caravan[data-index="${adjustedIndex}"]`);
+            const caravan2 = document.querySelector(`.caravans2 .caravan[data-index="${adjustedIndex + 3}"]`);
 
             // Reset classes
             caravan1.classList.remove("won", "lost");
@@ -154,12 +188,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Find the caravan element (parent of the clicked card)
                 const caravanElement = card.closest('.caravan');
                 const caravanIndex = parseInt(caravanElement.dataset.index);
+
+                // Adjust caravanIndex for player 2's caravans (index >= 3)
+                const isPlayer2 = caravanIndex >= 3;
+                const adjustedIndex = isPlayer2 ? caravanIndex - 3 : caravanIndex;
     
                 // Find the index of the clicked card within the caravan
                 const caravanCards = Array.from(caravanElement.querySelectorAll('.card')); // Get all cards in the caravan
                 const caravanCardIndex = caravanCards.indexOf(card); // Find the clicked card's index
     
-                console.log(`Placing card from hand index ${selectedCard} to caravan ${caravanIndex}, card slot ${caravanCardIndex}`);
+                console.log(`Placing card from hand index ${selectedCard} to caravan ${adjustedIndex}, card slot ${caravanCardIndex}`);
     
                 socket.emit("place_side_card", {
                     hand_index: selectedCard,
@@ -184,9 +222,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     console.log(`Placing card from hand index ${selectedCard} to caravan ${caravanIndex}`);
 
+                    const isPlayer2 = caravanIndex >= 3;
+                    const adjustedIndex = isPlayer2 ? caravanIndex - 3 : caravanIndex;
+
                     socket.emit("place_card", {
                         hand_index: selectedCard,
-                        caravan_index: caravanIndex
+                        caravan_index: adjustedIndex
                     });
 
                     // Reset selection
