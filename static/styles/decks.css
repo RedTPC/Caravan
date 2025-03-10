@@ -1,0 +1,53 @@
+body {
+    font-family: Arial, sans-serif;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+}
+
+button {
+    background-color: #4CAF50;
+    border: none;
+    color: white;
+    padding: 15px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: block;
+    margin: 20px auto;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: inline;
+    margin-left: 1em;
+    margin-right: 1em;
+    
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+.deck-card-option {
+    width: 60px;           /* 60px for width */
+    height: 90px;          /* 90px for height */
+    background-color: white;
+    border: 1px solid #333;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.deck-card-option.selected {
+    border: 3px solid #4CAF50;
+    transform: translateY(-5px);
+}
+

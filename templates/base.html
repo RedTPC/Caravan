@@ -18,6 +18,15 @@
     <a href="{{ url_for('register') }}">
         <button id="register">Register</button>
     </a>
+    {% if 'username' in session %}
+    <a href="{{ url_for('logout') }}">
+        <button id="logout">Logout</button>
+    </a>
+    <a href="{{ url_for('decks') }}">
+        <button id="decks">Decks</button>
+    </a>
+    {% endif %}
+
     </nav>
 
 

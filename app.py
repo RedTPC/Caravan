@@ -1,7 +1,8 @@
-from flask import Flask, render_template, url_for, redirect
+from flask import Flask, render_template, url_for, redirect, session, request
+from werkzeug.security import generate_password_hash, check_password_hash
 from flask_socketio import SocketIO, emit
 from forms import LoginForm, RegisterForm
-import caravan
+from functools import wraps
 from caravan import Game
 import random
 import sqlite3
@@ -10,6 +11,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, cors_allowed_origins="*")
 gamestate = None
+active_games = [] # [gamestate, game_id]
 
 
 @app.route("/")
@@ -24,7 +26,17 @@ def login():
         username = form.username.data
         password = form.password.data
 
-        return redirect(url_for("index"))
+        connect = sqlite3.connect("caravan.db")
+        db = connect.cursor()
+        db.execute("""SELECT * FROM users WHERE username = ?;""", (username,))
+        user = db.fetchone()
+        if user is None:
+            return redirect(url_for("login"))
+        if check_password_hash(user[1], password):
+            session["username"] = username
+            return redirect(url_for("index"))
+
+        return redirect(url_for("login"))
 
     else:
         return render_template("login.html", form=form)
@@ -37,17 +49,57 @@ def register():
         username = form.username.data
         email = form.email.data
         password = form.password.data
+        hashed_password = generate_password_hash(password)
+
+
+        connect = sqlite3.connect("caravan.db")
+        db = connect.cursor()
+
+        # check for duplicate username/email in db
+        db.execute("""SELECT * FROM users WHERE username = ? OR email = ?;""", (username, email))
+        is_duplicate_user = db.fetchone()
+        if is_duplicate_user is not None:
+            print("dupe detected")
+            return render_template("register.html", form=form)
+
+        db.execute("""INSERT INTO users (username, email, password)
+                      VALUES (?, ?, ?);""", (username, email, hashed_password))
+        connect.commit()
 
         return redirect(url_for("login"))
 
     else:
         return render_template("register.html", form=form)
+    
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "username" not in session:
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated_function
+    
+@app.route("/logout")
+def logout():
+    session.pop("username", None)
+    return redirect(url_for("index"))
+
+@app.route("/decks")
+@login_required
+def decks():
+    suits = ["♥", "♦", "♠", "♣"]
+    faces = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
+    deck = []
+    for suit in suits:
+        for face in faces:
+            deck.append(face+suit)
+    return render_template("decks.html", deck=deck)
 
 @socketio.on("create_game")
 def create_game():
     global gamestate
     gamestate = Game()
-    gamestate.startGame()
+    gamestate.startGame()    
 
     # Initialize with zero values since no cards are played yet
     caravan_values1, caravan_values2 = [0, 0, 0], [0, 0, 0]
@@ -58,7 +110,35 @@ def create_game():
 
     emit("game_update", response_data, broadcast=True)
 
+@socketio.on("create_multiplayer_game")
+def create_multiplayer_game():
+    global gamestate
+    gamestate = Game()
+    gamestate.startGame()
+    game_id = ''.join([str(random.randint(0, 9)) for i in range(5)])
+    active_games.append([gamestate, game_id])
+    
+    # Initialize with zero values since no cards are played yet
+    caravan_values1, caravan_values2 = [0, 0, 0], [0, 0, 0]
+    
+    response_data = gamestate.to_dict()
+    response_data['caravan_values1'] = caravan_values1
+    response_data['caravan_values2'] = caravan_values2
+
+    emit("game_update", response_data, broadcast=True)
+
+@socketio.on("join_game")
+def join_game(game_id):
+    for game in active_games:
+        if game[1] == game_id:
+            # join game
+            print("Game Found")
+        
+
+
+
 @socketio.on("create_game_ai")
+@login_required
 def create_game():
     global gamestate
     gamestate = Game()
@@ -242,10 +322,7 @@ def handle_place_card(data):
 def handle_discard_card(data):
     global gamestate
     if not gamestate:
-        return
-    
-    if gamestate.numturns < 6:
-        return
+        return        
 
     hand_index = data["hand_index"]
 
@@ -263,16 +340,16 @@ def handle_discard_card(data):
         
     
     # Determine player based on who sent the request
-    if player == gamestate.getTurn() and gamestate.numturns > 5:
+    if player == gamestate.getTurn():
     
         # Make sure it's the player's turn and the hand index is valid
         if player == "1" and hand_index < len(gamestate._hand1.getHand()):
             gamestate.discardCard(player, hand_index)
-            gamestate.flipTurn()
+            # gamestate.flipTurn()
             gamestate._hand1.replenishHand()
         elif player == "2" and hand_index < len(gamestate._hand2.getHand()):
             gamestate.discardCard(player, hand_index)
-            gamestate.flipTurn()
+            # gamestate.flipTurn()
             gamestate._hand2.replenishHand()
     
     # Send updated game state to all clients
@@ -308,19 +385,28 @@ def place_side_card(data):
     placed_card_value = gamestate._hand1.getHand()[hand_index].value() if player == "1" else gamestate._hand2.getHand()[hand_index].value()
 
     # Allow players to place K/J on either their own or opponent's caravans
-    target_caravan_index = caravan_index if player == "1" else caravan_index + 3  # Player 2's caravans are indexed 3-5
-
+    target_caravan_index = caravan_index if caravan_index < 3 else caravan_index - 3  # Convert to 0-2 range
+    player_caravans = caravan_index < 3  # True if targeting player 1's caravans
+    target_caravan = gamestate._board.getCaravan1()[target_caravan_index] if player_caravans else gamestate._board.getCaravan2()[target_caravan_index]
+    if not target_caravan or caravan_card_index >= len(target_caravan):
+        print("Invalid target caravan or card index")
+        return
 
     if placed_card_value in [11, 13]:  # If it's a J or K
-        gamestate._bonus_cards.append([placed_card_value, target_caravan_index, caravan_card_index])  
+        # Use 0-5 range for caravans in bonus cards (0-2 for player 1, 3-5 for player 2)
+        bonus_caravan_index = target_caravan_index if player_caravans else target_caravan_index + 3
+        
+        gamestate._bonus_cards.append([placed_card_value, bonus_caravan_index, caravan_card_index])  
         if player == "1":
             gamestate._hand1.removeCard(hand_index)
         else:
             gamestate._hand2.removeCard(hand_index)
 
         gamestate.flipTurn()
-        gamestate._hand2.replenishHand() if player == "1" else gamestate._hand1.replenishHand()
-
+        if player == "1":
+            gamestate._hand2.replenishHand()
+        else:
+            gamestate._hand1.replenishHand()
     else: 
         print("not a K or J, rejecting...")
             
@@ -336,34 +422,29 @@ def place_side_card(data):
         elif game_winner == "p2":
             gamestate.win_status = f"Player 2 Wins!"
 
-    caravan_values1, caravan_values2 = gamestate.getValues()
+    try:
+        caravan_values1, caravan_values2 = gamestate.getValues()
 
-    # Include gamestate.win_status in the response
-    response_data = gamestate.to_dict()
-    response_data['win_status'] = gamestate.win_status
-    response_data['caravan_values1'] = caravan_values1
-    response_data['caravan_values2'] = caravan_values2
-    response_data['is_vs_ai'] = gamestate._is_vs_ai
-    response_data['player'] = player
-    response_data['current_turn'] = gamestate.getTurn()  
+        # Include gamestate.win_status in the response
+        response_data = gamestate.to_dict()
+        response_data['win_status'] = gamestate.win_status
+        response_data['caravan_values1'] = caravan_values1
+        response_data['caravan_values2'] = caravan_values2
+        response_data['is_vs_ai'] = gamestate._is_vs_ai
+        response_data['player'] = player
+        response_data['current_turn'] = gamestate.getTurn()  
 
-
-
-    print(f"Caravan values 1: {caravan_values1}")
-    print(f"Caravan values 2: {caravan_values2}")
-    
-    # Send updated game state to all clients
-    print("Sending game_update:", response_data)
-
-
-    # IF ITS NOT A KING OR JACK, REMOVE CARAVANCARDINDEX AND REDIRECT TO MAIN PLACE CARD
-    # GOOD IDEA!
-
+        print(f"Caravan values 1: {caravan_values1}")
+        print(f"Caravan values 2: {caravan_values2}")
         
-    
-    # Send updated game state to all clients
-    emit("game_update", response_data, broadcast=True)
-
+        # Send updated game state to all clients
+        print("Sending game_update:", response_data)
+        emit("game_update", response_data, broadcast=True)
+        
+    except Exception as e:
+        print(f"Error during side card placement: {e}")
+        # If there's an error, provide feedback
+        emit("game_update", {"error": "An error occurred during side card placement."}, broadcast=True)
 
 @socketio.on("make_ai_move")
 def make_ai_move():
@@ -380,9 +461,17 @@ def make_ai_move():
         timeout_counter += 1
         print(timeout_counter)
         caravan_index = random.randint(0, 2)
-        hand_index = random.randint(0, 4)
-        caravan_card_index = random.randint(0, len(gamestate._board.getCaravan2()[caravan_index])-1) if len(gamestate._board.getCaravan2()[caravan_index]) > 0 else None
+        hand_index = random.randint(0, min(4, len(gamestate._hand2.getHand())-1)) if gamestate._hand2.getHand() else 0
+        # Only try to access caravan card index if the caravan has cards
+        if len(gamestate._board.getCaravan2()[caravan_index]) > 0:
+            caravan_card_index = random.randint(0, len(gamestate._board.getCaravan2()[caravan_index])-1)
+        else:
+            caravan_card_index = 0       
         player = "2"
+
+        # make sure we have cards in the hand
+        if not gamestate._hand2.getHand():
+            break
 
         print(f"\n\ncaravan index: {caravan_index}, hand_index: {hand_index}, caravan card index {caravan_card_index}\n\n\ ")
 
@@ -397,12 +486,20 @@ def make_ai_move():
         # HANDLE PLACING KINGS JACKS
 
         if gamestate.numturns > 5 and (placed_card_value2 == 11 or placed_card_value2 == 13):
+
             # Allow players to place K/J on either their own or opponent's caravans
             target_caravan_index = caravan_index * (random.randint(1, 2))
-            gamestate._bonus_cards.append([placed_card_value2, target_caravan_index, caravan_card_index])  
-            gamestate._hand2.removeCard(hand_index)
-            gamestate.flipTurn()
-            gamestate._hand1.replenishHand()
+            # Only add bonus card if there's at least one card in the target caravan
+            target_is_player1 = target_caravan_index < 3
+            target_caravan = gamestate._board.getCaravan1()[target_caravan_index] if target_is_player1 else gamestate._board.getCaravan2()[target_caravan_index - 3]
+
+            if target_caravan and len(target_caravan) > 0:
+                valid_caravan_card_index = random.randint(0, len(target_caravan) - 1)
+                gamestate._bonus_cards.append([placed_card_value2, target_caravan_index, valid_caravan_card_index])  
+                gamestate._hand2.removeCard(hand_index)
+                gamestate.flipTurn()
+                gamestate._hand1.replenishHand()
+                valid_move = True
 
         elif gamestate.numturns > 5 and (placed_card_value2 != 11) and (placed_card_value2 != 13):
             valid_move = False    
@@ -454,32 +551,31 @@ def make_ai_move():
             gamestate.win_status = f"Player 1 Wins!"
         elif game_winner == "p2":
             gamestate.win_status = f"Player 2 Wins!"
+
     try:
-
         caravan_values1, caravan_values2 = gamestate.getValues()
+        
+        response_data = gamestate.to_dict()
+        response_data['win_status'] = gamestate.win_status
+        response_data['caravan_values1'] = caravan_values1
+        response_data['caravan_values2'] = caravan_values2
+        response_data['is_vs_ai'] = gamestate._is_vs_ai
+        response_data['player'] = player
+        response_data['current_turn'] = gamestate.getTurn()  
 
-    except:
-        index_url = url_for("/")
-        emit("redirect", {"url": index_url})   
-
-    response_data = gamestate.to_dict()
-    response_data['win_status'] = gamestate.win_status
-    response_data['caravan_values1'] = caravan_values1
-    response_data['caravan_values2'] = caravan_values2
-    response_data['is_vs_ai'] = gamestate._is_vs_ai
-    response_data['player'] = player
-    response_data['current_turn'] = gamestate.getTurn()  
-
-
-    print(f"Caravan values 1: {caravan_values1}")
-    print(f"Caravan values 2: {caravan_values2}")
-    
-    # Send updated game state to all clients
-    print("Sending game_update:", response_data)
- 
-    
-    # Send updated game state to all clients
-    emit("game_update", gamestate.to_dict(), broadcast=True)
+        print(f"Caravan values 1: {caravan_values1}")
+        print(f"Caravan values 2: {caravan_values2}")
+        
+        # Send updated game state to all clients
+        print("Sending game_update:", response_data)
+        
+        # Send updated game state to all clients
+        emit("game_update", response_data, broadcast=True)
+        
+    except Exception as e:
+        print(f"Error during AI move: {e}")
+        # If there's an error, redirect to the index page or reset the game
+        emit("game_update", {"error": "An error occurred. Starting a new game."}, broadcast=True)
 
 if __name__ == "__main__":
     socketio.run(app, debug=True, allow_unsafe_werkzeug=True)

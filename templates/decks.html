@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="/styles/decks.css">
+<body class="container mt-5">
+    <h2>Decks</h2>
+
+    {% for i in range(0, 30) %}
+    <div class="deck-card-slot" id="deck-card-slot-{{ i }}">
+        <!-- You can add content or other attributes here -->
+        card number {{ i }}
+    </div>
+    {% endfor %}
+
+    {% for i in deck %}
+    <div class="deck-card-option" id="deck-card-option-{{ i }}">
+        <!-- You can add content or other attributes here -->
+        {{ i }}
+    </div>
+    {% endfor %}
+
+
+
+</body>
+
+    {% endblock %}

@@ -209,50 +209,59 @@ class Game:
             self._hand2.removeCard(hand_index)
             self._discard_pile2.append(card)
             print(f"Discard pile 2: {str(self._discard_pile2)}")
-
+            
     def getValues(self):
         caravan_values1 = [0, 0, 0]  
         caravan_values2 = [0, 0, 0]
 
+        # Calculate base values for player 1's caravans
         for i, caravan in enumerate(self._board.getCaravan1()):
             for card in caravan:
                 caravan_values1[i] += card.value() if (card.getFace() != "Q") and (card.getFace() != "K") and (card.getFace() != "J") else 0
 
+        # Calculate base values for player 2's caravans
         for i, caravan in enumerate(self._board.getCaravan2()):
             for card in caravan:
                 caravan_values2[i] += card.value() if (card.getFace() != "Q") and (card.getFace() != "K") and (card.getFace() != "J") else 0
 
         # HANDLE KINGS AND JACKS
-
-        # list of lists (card, caravan_index 1-6, caravan_card_index)
-
+        caravans1 = self._board.getCaravan1()
+        caravans2 = self._board.getCaravan2()
+        
         print("Bonus Cards List: ")
         for bonus_card in self._bonus_cards:
-            caravans1 = self._board.getCaravan1()
-            caravans2 = self._board.getCaravan2()
-            # bonus_card1 = caravans1[bonus_card[0]]
-            # bonus_card2 = caravans2[bonus_card[0]]
-            # caravan_card_index1 = caravans1[bonus_card[2]]
-            # caravan_card_index2 = caravans2[bonus_card[2]]
-            # caravan_index1 = caravans1[bonus_card[1]]
-            # caravan_index2 = caravans2[bonus_card[1]]
-
-            #KINGS
             print(f"\n\nBonus Card: {bonus_card[0]}, Bonus Card Info: {bonus_card}\n\n")
             
-            # DOES NOT ACCOUNT FOR KINGS ONTOP OF KINGS ETC
-
+            # KINGS
             if bonus_card[0] == 13:  # King doubles card value
                 if bonus_card[1] < 3:  # Player 1's caravans
-                    caravan_values1[bonus_card[1]] += caravans1[bonus_card[1]][bonus_card[2]].value()
-                elif bonus_card[1] >= 3:  # Player 2's caravans
-                    caravan_values2[bonus_card[1] - 3] += caravans2[bonus_card[1] - 3][bonus_card[2]].value()
+                    # Check if the indices are valid before accessing
+                    if (0 <= bonus_card[1] < len(caravans1) and 
+                        caravans1[bonus_card[1]] and  # Check if caravan exists and has cards
+                        0 <= bonus_card[2] < len(caravans1[bonus_card[1]])):
+                        caravan_values1[bonus_card[1]] += caravans1[bonus_card[1]][bonus_card[2]].value()
+                else:  # Player 2's caravans (index >= 3)
+                    caravan_idx = bonus_card[1] - 3
+                    if (0 <= caravan_idx < len(caravans2) and 
+                        caravans2[caravan_idx] and  # Check if caravan exists and has cards
+                        0 <= bonus_card[2] < len(caravans2[caravan_idx])):
+                        caravan_values2[caravan_idx] += caravans2[caravan_idx][bonus_card[2]].value()
 
+            # JACKS
             elif bonus_card[0] == 11:  # Jack removes card value
-                if bonus_card[1] < 3:
-                    caravan_values1[bonus_card[1]] -= caravans1[bonus_card[1]][bonus_card[2]].value()
-                elif bonus_card[1] >= 3:
-                    caravan_values2[bonus_card[1] - 3] -= caravans2[bonus_card[1] - 3][bonus_card[2]].value()
+                if bonus_card[1] < 3:  # Player 1's caravans
+                    if (0 <= bonus_card[1] < len(caravans1) and 
+                        caravans1[bonus_card[1]] and
+                        0 <= bonus_card[2] < len(caravans1[bonus_card[1]])):
+                        caravan_values1[bonus_card[1]] -= caravans1[bonus_card[1]][bonus_card[2]].value()
+                else:  # Player 2's caravans
+                    caravan_idx = bonus_card[1] - 3
+                    if (0 <= caravan_idx < len(caravans2) and 
+                        caravans2[caravan_idx] and
+                        0 <= bonus_card[2] < len(caravans2[caravan_idx])):
+                        caravan_values2[caravan_idx] -= caravans2[caravan_idx][bonus_card[2]].value()
+
+        return caravan_values1, caravan_values2
 
 
 
@@ -386,28 +395,6 @@ class Game:
                 self._caravans2_suit[i] = self._board.getCaravan2()[i][-1].getSuit()
 
         print(f"Directions: {self._caravans1_direction, self._caravans2_direction}, Suits: {self._caravans1_suit, self._caravans2_suit}")   
-
-    def make_ai_move(self):
-        if self._turn == "2":  
-            best_move = None
-            best_value = -float("inf")
-
-            for hand_index, card in enumerate(self._hand2.getHand()):
-                for caravan_index, caravan in enumerate(self._board.getCaravan2()):
-                    if self.is_valid_move("2", hand_index, caravan_index):
-                        temp_value = self.evaluate_move("2", hand_index, caravan_index)
-                        
-                        if temp_value > best_value:
-                            best_value = temp_value
-                            best_move = (hand_index, caravan_index)
-
-            if best_move:
-                self.placeCard("2", best_move[0], best_move[1])
-                self.flipTurn()
-
-
-
-                
         
         
     def to_dict(self):
