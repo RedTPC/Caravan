@@ -145,6 +145,14 @@ class Game:
         self._bonus_cards = [] # list of lists (card, caravan_index 1-6, caravan_card_index)
         self._is_vs_ai = False
         self.win_status = ""
+        self.player1 = ""
+        self.player2 = ""
+        self.game_id = None
+        self.game_started = False
+        self.is_singleplayer = True
+        self.caravan_values1 = []
+        self.caravan_values2 = []
+        self.waiting_for_player = False
 
     def ShuffleDecks(self):
         self._deck1.shuffle()
@@ -211,18 +219,18 @@ class Game:
             print(f"Discard pile 2: {str(self._discard_pile2)}")
             
     def getValues(self):
-        caravan_values1 = [0, 0, 0]  
-        caravan_values2 = [0, 0, 0]
+        self.caravan_values1 = [0, 0, 0]  
+        self.caravan_values2 = [0, 0, 0]
 
         # Calculate base values for player 1's caravans
         for i, caravan in enumerate(self._board.getCaravan1()):
             for card in caravan:
-                caravan_values1[i] += card.value() if (card.getFace() != "Q") and (card.getFace() != "K") and (card.getFace() != "J") else 0
+                self.caravan_values1[i] += card.value() if (card.getFace() != "Q") and (card.getFace() != "K") and (card.getFace() != "J") else 0
 
         # Calculate base values for player 2's caravans
         for i, caravan in enumerate(self._board.getCaravan2()):
             for card in caravan:
-                caravan_values2[i] += card.value() if (card.getFace() != "Q") and (card.getFace() != "K") and (card.getFace() != "J") else 0
+                self.caravan_values2[i] += card.value() if (card.getFace() != "Q") and (card.getFace() != "K") and (card.getFace() != "J") else 0
 
         # HANDLE KINGS AND JACKS
         caravans1 = self._board.getCaravan1()
@@ -239,13 +247,13 @@ class Game:
                     if (0 <= bonus_card[1] < len(caravans1) and 
                         caravans1[bonus_card[1]] and  # Check if caravan exists and has cards
                         0 <= bonus_card[2] < len(caravans1[bonus_card[1]])):
-                        caravan_values1[bonus_card[1]] += caravans1[bonus_card[1]][bonus_card[2]].value()
+                        self.caravan_values1[bonus_card[1]] += caravans1[bonus_card[1]][bonus_card[2]].value()
                 else:  # Player 2's caravans (index >= 3)
                     caravan_idx = bonus_card[1] - 3
                     if (0 <= caravan_idx < len(caravans2) and 
                         caravans2[caravan_idx] and  # Check if caravan exists and has cards
                         0 <= bonus_card[2] < len(caravans2[caravan_idx])):
-                        caravan_values2[caravan_idx] += caravans2[caravan_idx][bonus_card[2]].value()
+                        self.caravan_values2[caravan_idx] += caravans2[caravan_idx][bonus_card[2]].value()
 
             # JACKS
             elif bonus_card[0] == 11:  # Jack removes card value
@@ -253,15 +261,13 @@ class Game:
                     if (0 <= bonus_card[1] < len(caravans1) and 
                         caravans1[bonus_card[1]] and
                         0 <= bonus_card[2] < len(caravans1[bonus_card[1]])):
-                        caravan_values1[bonus_card[1]] -= caravans1[bonus_card[1]][bonus_card[2]].value()
+                        self.caravan_values1[bonus_card[1]] -= caravans1[bonus_card[1]][bonus_card[2]].value()
                 else:  # Player 2's caravans
                     caravan_idx = bonus_card[1] - 3
                     if (0 <= caravan_idx < len(caravans2) and 
                         caravans2[caravan_idx] and
                         0 <= bonus_card[2] < len(caravans2[caravan_idx])):
-                        caravan_values2[caravan_idx] -= caravans2[caravan_idx][bonus_card[2]].value()
-
-        return caravan_values1, caravan_values2
+                        self.caravan_values2[caravan_idx] -= caravans2[caravan_idx][bonus_card[2]].value()
 
 
 
@@ -270,7 +276,7 @@ class Game:
 
 
 
-        return caravan_values1, caravan_values2
+        return self.caravan_values1, self.caravan_values2
 
     def checkForWin(self):
         values1 = self.getValues()[0]
@@ -407,8 +413,16 @@ class Game:
             'discard_pile1': [card.to_dict() for card in self._discard_pile1],
             'discard_pile2': [card.to_dict() for card in self._discard_pile2],
             # 'bonus_cards': {item[0]: item[1:] for item in self._bonus_cards}
-            'bonus_cards': self._bonus_cards
-
+            'bonus_cards': self._bonus_cards,
+            'player1' : self.player1,
+            'player2' : self.player2,
+            'caravan_values1' : self.caravan_values1,
+            'caravan_values1' : self.caravan_values1,
+            'game_id' : self.game_id,
+            'waiting_for_player' : self.waiting_for_player,
+            'is_vs_ai' : self._is_vs_ai,
+            'current_turn' : self.getTurn(),
+            'win_status' : self.win_status
         }
                 
     

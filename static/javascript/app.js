@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', function () {
         window.location.href = data.url;  // Redirects to Flask route
     });
 
-
     // Start & Join Game
     document.getElementById("createGameButton").addEventListener("click", () => {
         console.log("Create game button clicked");
@@ -17,6 +16,19 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById("createAIGameButton").addEventListener("click", () => {
         console.log("Create AI game button clicked");
         socket.emit("create_game_ai");
+    });
+
+    document.getElementById("createMultiplayerButton").addEventListener("click", () => {
+        console.log("Create multiplayer game button clicked");
+        socket.emit("create_multiplayer_game");
+    });
+
+    document.getElementById("joinGameButton").addEventListener("click", () => {
+        const gameId = document.getElementById("gameIdInput").value.trim();
+        if (gameId) {
+            console.log("Join game button clicked with ID:", gameId);
+            socket.emit("join_multiplayer_game", {game_id: gameId});
+        }
     });
 
     function sleep(milliseconds) {
@@ -31,6 +43,18 @@ document.addEventListener('DOMContentLoaded', function () {
     // Listen for board updates
     socket.on("game_update", (data) => {
         console.log("Game state updated", data);
+
+        
+        // Get the game_id from the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const gameId = urlParams.get('game_id');
+        console.log("Game ID:", gameId);
+
+        // Access game state and update UI
+        const player1 = data.player1;
+        const player2 = data.player2;
+        document.getElementById("player1").textContent = player1;
+        document.getElementById("player2").textContent = player2 || "Waiting for Player 2";
 
         // Show the game container
         document.getElementById("gameContainer").style.display = "block";

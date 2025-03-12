@@ -3,18 +3,24 @@
 {% block content %}
 
 <body>
+
+    <h2>Multiplayer</h2>
+
     <nav>
-    <!-- Start Game button -->
-    <button id="createGameButton">Create Game</button>
+        <!-- Start Game button -->
+        <button id="createGameButton">Create Game</button>
+    
+        <button id="createAIGameButton">Play VS. AI</button>
+    
+        <button id="createMultiplayerButton">Create Room</button>
+    
+        <input type="text" id="gameIdInput" placeholder="Enter Game ID">
+        <button id="joinGameButton">Join Room</button>
+    
+        </nav>
 
-    <button id="createAIGameButton">Play VS. AI</button>
-
-    <button id="createMultiplayerButton">Create Room</button>
-
-    <input type="text" id="gameIdInput" placeholder="Enter Game ID">
-    <button id="joinGameButton">Join Room</button>
-
-    </nav>
+    <h3 id="player1"></h3>
+    <h3 id="player2"></h3>
 
     <div id="winnerMessage" style="display: none; font-size: 24px; color: green; text-align: center; margin-top: 20px;">
     </div>
@@ -67,7 +73,7 @@
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
 
     <!-- Link to the external JavaScript -->
-    <script src="static/javascript/app.js"></script>
+    <script src="../static/javascript/app.js"></script>
 </body>
 
 {% endblock %}

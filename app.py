@@ -30,9 +30,10 @@ def login():
         db = connect.cursor()
         db.execute("""SELECT * FROM users WHERE username = ?;""", (username,))
         user = db.fetchone()
+        print(user)
         if user is None:
             return redirect(url_for("login"))
-        if check_password_hash(user[1], password):
+        if check_password_hash(user[3], password):
             session["username"] = username
             return redirect(url_for("index"))
 
@@ -99,17 +100,16 @@ def decks():
 def create_game():
     global gamestate
     gamestate = Game()
-    gamestate.startGame()    
-
-    # Initialize with zero values since no cards are played yet
-    caravan_values1, caravan_values2 = [0, 0, 0], [0, 0, 0]
+    gamestate.startGame()   
+    gamestate.game_started = True
+    gamestate.is_singleplayer = True
     
     response_data = gamestate.to_dict()
-    response_data['caravan_values1'] = caravan_values1
-    response_data['caravan_values2'] = caravan_values2
 
+    print("created game")
     emit("game_update", response_data, broadcast=True)
 
+@login_required
 @socketio.on("create_multiplayer_game")
 def create_multiplayer_game():
     global gamestate
@@ -117,67 +117,100 @@ def create_multiplayer_game():
     gamestate.startGame()
     game_id = ''.join([str(random.randint(0, 9)) for i in range(5)])
     active_games.append([gamestate, game_id])
-    
-    # Initialize with zero values since no cards are played yet
-    caravan_values1, caravan_values2 = [0, 0, 0], [0, 0, 0]
-    
-    response_data = gamestate.to_dict()
-    response_data['caravan_values1'] = caravan_values1
-    response_data['caravan_values2'] = caravan_values2
 
+    gamestate.player1 = session["username"]
+    print(f"setting {gamestate.player1} to player 1")
+    gamestate.player2 = None
+    gamestate.game_started = False
+    gamestate.is_singleplayer = False
+    gamestate.getValues()
+    gamestate.game_id = game_id
+    gamestate.waiting_for_player = True
+
+    response_data = gamestate.to_dict()
+    print("making a room #", game_id)
+    emit("redirect", {"url": f"/game/{game_id}"})
     emit("game_update", response_data, broadcast=True)
 
-@socketio.on("join_game")
-def join_game(game_id):
+@login_required
+@socketio.on("join_multiplayer_game")
+def join_multiplayer_game(data):
+    for game in active_games:
+        game_id = data['game_id']
+        gamestate = game[0]
+        if game[1] == game_id and gamestate.waiting_for_player == True:
+            gamestate.waiting_for_player = False
+            gamestate.getValues()
+            gamestate.player2 = session["username"]
+            print(f"setting {gamestate.player2} to player 2")
+
+            gamestate.game_started = True
+
+            response_data = gamestate.to_dict()
+
+            emit("redirect", {"url": f"/game/{game_id}"})
+            emit("game_update", response_data, broadcast=True)
+
+@app.route("/game/<game_id>")
+def game_page(game_id):
+    # Check if the game exists
     for game in active_games:
         if game[1] == game_id:
-            # join game
-            print("Game Found")
-        
-
+            gamestate = game[0]
+            return render_template("multiplayer.html", game_id=game_id, gamestate=gamestate)
+            
+    # Game not found, redirect to index
+    return redirect(url_for("index"))
 
 
 @socketio.on("create_game_ai")
 @login_required
-def create_game():
+def create_game_ai():
     global gamestate
     gamestate = Game()
     gamestate.startGame()
     gamestate._is_vs_ai = True
-
-    # Initialize with zero values since no cards are played yet
-    caravan_values1, caravan_values2 = [0, 0, 0], [0, 0, 0]
+    gamestate.game_started = True
+    gamestate.is_singleplayer = True
     
     response_data = gamestate.to_dict()
-    response_data['caravan_values1'] = caravan_values1
-    response_data['caravan_values2'] = caravan_values2
-    response_data['is_vs_ai'] = True
  
     emit("game_update", response_data, broadcast=True)
 
 
 @socketio.on("place_card")
 def handle_place_card(data):
-    global gamestate
+    hand_index = data["hand_index"]
+    caravan_index = data["caravan_index"]
     if not gamestate:
         return
 
-    hand_index = data["hand_index"]
-    caravan_index = data["caravan_index"]
-
+    print(gamestate)
 
     # Determine player based on hand index
-    if hand_index < 8:
-        player = "1"
-    else:
-        player = "2"
-        hand_index -= 8  # Adjust index for player 2's hand
+    if gamestate.is_singleplayer == True:
+        if hand_index < 8:
+            player = "1"
+        else:
+            player = "2"
+            hand_index -= 8  # Adjust index for player 2's hand
 
     # DETERMINE IF IT IS GAME VS AI, IF IT IS, PREVENT PLAYER 2 FROM MAKING A MOVE
     if gamestate._is_vs_ai == True:
         if player == "2":
             return
-        
+    
+    # MULTIPLAYER GAMES
+    if gamestate.game_id is not None:
+        if gamestate.player1 == session["username"]:
+            player = "1"
+            print(f"setting player to 1")
+
+            
+        elif gamestate.player2 == session["username"]:
+            print(f"setting player to 2")
+            player = "2"
+            hand_index -= 8
 
     # PLAYER 1 VARS
     if player == "1":
@@ -298,20 +331,11 @@ def handle_place_card(data):
             gamestate.win_status = f"Player 2 Wins!"
     
 
-    caravan_values1, caravan_values2 = gamestate.getValues()
+    gamestate.getValues()
 
     # Include gamestate.win_status in the response
     response_data = gamestate.to_dict()
-    response_data['win_status'] = gamestate.win_status
-    response_data['caravan_values1'] = caravan_values1
-    response_data['caravan_values2'] = caravan_values2
-    response_data['is_vs_ai'] = gamestate._is_vs_ai
     response_data['player'] = player
-    response_data['current_turn'] = gamestate.getTurn()  
-
-
-    print(f"Caravan values 1: {caravan_values1}")
-    print(f"Caravan values 2: {caravan_values2}")
     
     # Send updated game state to all clients
     print("Sending game_update:", response_data)
@@ -337,6 +361,18 @@ def handle_discard_card(data):
     if gamestate._is_vs_ai == True:
         if player == "2":
             return
+        
+    # MULTIPLAYER GAMES
+    if gamestate.game_id is not None:
+        if gamestate.player1 == session["username"]:
+            player = "1"
+            print(f"setting player to 1")
+
+            
+        elif gamestate.player2 == session["username"]:
+            print(f"setting player to 2")
+            player = "2"
+            hand_index -= 8
         
     
     # Determine player based on who sent the request
@@ -370,15 +406,30 @@ def place_side_card(data):
     caravan_index = data["caravan_index"]
 
     # Determine player based on hand index
-    if hand_index < 8:
-        player = "1"
-    else:
-        player = "2"
-        hand_index -= 8  # Adjust index for player 2's hand
+    if gamestate.is_singleplayer == True:
+        if hand_index < 8:
+            player = "1"
+        else:
+            player = "2"
+            hand_index -= 8  # Adjust index for player 2's hand
 
     # DETERMINE IF IT IS GAME VS AI, IF IT IS, PREVENT PLAYER 2 FROM MAKING A MOVE
     if gamestate._is_vs_ai == True:
         if player == "2":
+            return
+    
+    # MULTIPLAYER GAMES
+    if gamestate.game_id is not None:
+        if gamestate.player1 == session["username"]:
+            player = "1"
+            print(f"setting player to 1")
+    
+        elif gamestate.player2 == session["username"]:
+            print(f"setting player to 2")
+            player = "2"
+            hand_index -= 8
+
+        else:
             return
         
 
@@ -423,19 +474,14 @@ def place_side_card(data):
             gamestate.win_status = f"Player 2 Wins!"
 
     try:
-        caravan_values1, caravan_values2 = gamestate.getValues()
+        gamestate.getValues()
 
         # Include gamestate.win_status in the response
         response_data = gamestate.to_dict()
-        response_data['win_status'] = gamestate.win_status
-        response_data['caravan_values1'] = caravan_values1
-        response_data['caravan_values2'] = caravan_values2
-        response_data['is_vs_ai'] = gamestate._is_vs_ai
         response_data['player'] = player
-        response_data['current_turn'] = gamestate.getTurn()  
 
-        print(f"Caravan values 1: {caravan_values1}")
-        print(f"Caravan values 2: {caravan_values2}")
+        print(f"Caravan values 1: {gamestate.caravan_values1}")
+        print(f"Caravan values 2: {gamestate.caravan_values2}")
         
         # Send updated game state to all clients
         print("Sending game_update:", response_data)
@@ -553,18 +599,13 @@ def make_ai_move():
             gamestate.win_status = f"Player 2 Wins!"
 
     try:
-        caravan_values1, caravan_values2 = gamestate.getValues()
+        gamestate.getValues()
         
         response_data = gamestate.to_dict()
-        response_data['win_status'] = gamestate.win_status
-        response_data['caravan_values1'] = caravan_values1
-        response_data['caravan_values2'] = caravan_values2
-        response_data['is_vs_ai'] = gamestate._is_vs_ai
         response_data['player'] = player
-        response_data['current_turn'] = gamestate.getTurn()  
 
-        print(f"Caravan values 1: {caravan_values1}")
-        print(f"Caravan values 2: {caravan_values2}")
+        print(f"Caravan values 1: {gamestate.caravan_values1}")
+        print(f"Caravan values 2: {gamestate.caravan_values2}")
         
         # Send updated game state to all clients
         print("Sending game_update:", response_data)
