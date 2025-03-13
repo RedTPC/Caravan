@@ -4,3 +4,11 @@ revamp css completely
 add different backgrounds
 add custom decks
 add cap gambling
+
+you can add queens on the enemies cards
+jacks disappear with the card and any face cards attatched
+caravans need to be able to be unsold
+higher values need to win 
+putting a king on a king makes a 40
+
+AI placing queens is broken

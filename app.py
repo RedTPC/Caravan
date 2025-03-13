@@ -11,7 +11,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, cors_allowed_origins="*")
 gamestate = None
-active_games = [] # [gamestate, game_id]
+active_games = [] # [gamestate, game_id, gametype]
 
 
 @app.route("/")
@@ -30,7 +30,7 @@ def login():
         db = connect.cursor()
         db.execute("""SELECT * FROM users WHERE username = ?;""", (username,))
         user = db.fetchone()
-        print(user)
+        #print(user)
         if user is None:
             return redirect(url_for("login"))
         if check_password_hash(user[3], password):
@@ -60,7 +60,7 @@ def register():
         db.execute("""SELECT * FROM users WHERE username = ? OR email = ?;""", (username, email))
         is_duplicate_user = db.fetchone()
         if is_duplicate_user is not None:
-            print("dupe detected")
+            #print("dupe detected")
             return render_template("register.html", form=form)
 
         db.execute("""INSERT INTO users (username, email, password)
@@ -102,11 +102,13 @@ def create_game():
     gamestate = Game()
     gamestate.startGame()   
     gamestate.game_started = True
-    gamestate.is_singleplayer = True
+    gamestate.gametype = "singleplayer"
+    game_id = ''.join([str(random.randint(0, 9)) for i in range(5)])
+    active_games.append([gamestate, game_id, gamestate.gametype])   
     
     response_data = gamestate.to_dict()
 
-    print("created game")
+    #print("created game")
     emit("game_update", response_data, broadcast=True)
 
 @login_required
@@ -116,19 +118,19 @@ def create_multiplayer_game():
     gamestate = Game()
     gamestate.startGame()
     game_id = ''.join([str(random.randint(0, 9)) for i in range(5)])
-    active_games.append([gamestate, game_id])
+    active_games.append([gamestate, game_id, gamestate.gametype])
 
     gamestate.player1 = session["username"]
-    print(f"setting {gamestate.player1} to player 1")
+    #print(f"setting {gamestate.player1} to player 1")
     gamestate.player2 = None
     gamestate.game_started = False
-    gamestate.is_singleplayer = False
+    gamestate.gametype = "multiplayer"
     gamestate.getValues()
     gamestate.game_id = game_id
     gamestate.waiting_for_player = True
 
     response_data = gamestate.to_dict()
-    print("making a room #", game_id)
+    #print("making a room #", game_id)
     emit("redirect", {"url": f"/game/{game_id}"})
     emit("game_update", response_data, broadcast=True)
 
@@ -142,7 +144,7 @@ def join_multiplayer_game(data):
             gamestate.waiting_for_player = False
             gamestate.getValues()
             gamestate.player2 = session["username"]
-            print(f"setting {gamestate.player2} to player 2")
+            #print(f"setting {gamestate.player2} to player 2")
 
             gamestate.game_started = True
 
@@ -164,31 +166,45 @@ def game_page(game_id):
 
 
 @socketio.on("create_game_ai")
-@login_required
 def create_game_ai():
-    global gamestate
     gamestate = Game()
     gamestate.startGame()
-    gamestate._is_vs_ai = True
     gamestate.game_started = True
-    gamestate.is_singleplayer = True
-    
+    gamestate.gametype = "AI"
+    game_id = ''.join([str(random.randint(0, 9)) for i in range(5)])
+    gamestate.game_id = game_id
+    active_games.append([gamestate, game_id, gamestate.gametype])
+    gamestate.getValues()
+
     response_data = gamestate.to_dict()
+    #print(f"created ai game, id={game_id}")
+    #print(f"active games: {active_games}")
  
     emit("game_update", response_data, broadcast=True)
 
-
 @socketio.on("place_card")
 def handle_place_card(data):
+    #print("recieved place_card")
     hand_index = data["hand_index"]
     caravan_index = data["caravan_index"]
+    game_id = data['game_id']
+    #print(game_id)
+
+    for game in active_games:
+        if game[1] == game_id:
+            gamestate = game[0]
+        else:
+            #print("game not found in active_games")
+            return
+
     if not gamestate:
+        #print("no gamestate, returning..")
         return
 
-    print(gamestate)
+    #print(gamestate)
 
     # Determine player based on hand index
-    if gamestate.is_singleplayer == True:
+    if gamestate.gametype == "singleplayer" or gamestate.gametype == "AI":
         if hand_index < 8:
             player = "1"
         else:
@@ -196,19 +212,19 @@ def handle_place_card(data):
             hand_index -= 8  # Adjust index for player 2's hand
 
     # DETERMINE IF IT IS GAME VS AI, IF IT IS, PREVENT PLAYER 2 FROM MAKING A MOVE
-    if gamestate._is_vs_ai == True:
+    if gamestate.gametype == "AI":
         if player == "2":
             return
     
     # MULTIPLAYER GAMES
-    if gamestate.game_id is not None:
+    if gamestate.gametype == "multiplayer":
         if gamestate.player1 == session["username"]:
             player = "1"
-            print(f"setting player to 1")
+            #print(f"setting player to 1")
 
             
         elif gamestate.player2 == session["username"]:
-            print(f"setting player to 2")
+            #print(f"setting player to 2")
             player = "2"
             hand_index -= 8
 
@@ -219,7 +235,7 @@ def handle_place_card(data):
         placed_card_value1 = gamestate._hand1.getHand()[hand_index].value()
         top_card_suit1 = gamestate._board._caravans1[caravan_index][-1].getSuit() if gamestate._board._caravans1[caravan_index] else None        
         placed_card_suit1 = gamestate._hand1.getHand()[hand_index].getSuit()
-        print(f"direction1: {direction1}, top_card_value1: {top_card_value1}, placed_card_value1: {placed_card_value1}, top_card_suit1: {top_card_suit1}, placed_card_suit1: {placed_card_suit1}")
+        #print(f"direction1: {direction1}, top_card_value1: {top_card_value1}, placed_card_value1: {placed_card_value1}, top_card_suit1: {top_card_suit1}, placed_card_suit1: {placed_card_suit1}")
         placed_card_value2 = None
     # PLAYER 2 VARS
     if player == "2":
@@ -229,12 +245,12 @@ def handle_place_card(data):
         placed_card_value2 = gamestate._hand2.getHand()[hand_index].value() 
         top_card_suit2 = gamestate._board._caravans2[caravan_index][-1].getSuit() if gamestate._board._caravans2[caravan_index] else None
         placed_card_suit2 = gamestate._hand2.getHand()[hand_index].getSuit()
-        print(f"direction2: {direction2}, top_card_value2: {top_card_value2}, placed_card_value2: {placed_card_value2}, top_card_suit2: {top_card_suit2}, placed_card_suit2: {placed_card_suit2}")
+        #print(f"direction2: {direction2}, top_card_value2: {top_card_value2}, placed_card_value2: {placed_card_value2}, top_card_suit2: {top_card_suit2}, placed_card_suit2: {placed_card_suit2}")
         placed_card_value1 = None
     gamestate.handleDirectionsSuits()
 
 
-    if player == gamestate.getTurn() and gamestate.numturns > 5 and (placed_card_value1 != 11) and (placed_card_value1 != 13):
+    if player == gamestate.getTurn() and gamestate.numturns > 5 and (placed_card_value1 != 11) and (placed_card_value1 != 13) and (placed_card_value2 != 11) and (placed_card_value2 != 13) and (placed_card_value1 != 12) and (placed_card_value2 != 12):
     
         # Make sure the index is valid
         if player == "1" and hand_index < len(gamestate._hand1.getHand()):
@@ -258,7 +274,7 @@ def handle_place_card(data):
                 valid_move = True
                 
             if valid_move:
-                print(f"valid move player: {player}")
+                #print(f"valid move player: {player}")
 
                 # FLIP FOR QUEEN
                 if placed_card_value1 == 12:
@@ -291,16 +307,8 @@ def handle_place_card(data):
                 valid_move = True
                 
             if valid_move:
-                print(f"valid move player: {player}")
+                #print(f"valid move player: {player}")
 
-                # FLIP FOR QUEEN
-                if placed_card_value2 == 12:
-                    # Get the queen's suit to update the caravan suit
-                    queen_suit = gamestate._hand2.getHand()[hand_index].getSuit()
-                    # Update the suit for the caravan
-                    gamestate._caravans2_suit[caravan_index] = queen_suit
-                    # Flip the direction
-                    gamestate.flipOrder(caravan_index)
 
                 gamestate.placeCard(player, hand_index, caravan_index)
                 gamestate.flipTurn()
@@ -338,7 +346,7 @@ def handle_place_card(data):
     response_data['player'] = player
     
     # Send updated game state to all clients
-    print("Sending game_update:", response_data)
+    #print("Sending game_update:", response_data)
 
     emit("game_update", response_data, broadcast=True)
 
@@ -351,26 +359,27 @@ def handle_discard_card(data):
     hand_index = data["hand_index"]
 
     # Determine player based on hand index
-    if hand_index < 8:
-        player = "1"
-    else:
-        player = "2"
-        hand_index -= 8  # Adjust index for player 2's hand
+    if gamestate.gametype == "singleplayer" or gamestate.gametype == "AI":
+        if hand_index < 8:
+            player = "1"
+        else:
+            player = "2"
+            hand_index -= 8  # Adjust index for player 2's hand
 
     # DETERMINE IF IT IS GAME VS AI, IF IT IS, PREVENT PLAYER 2 FROM MAKING A MOVE
-    if gamestate._is_vs_ai == True:
+    if gamestate.gametype == "AI":
         if player == "2":
             return
         
-    # MULTIPLAYER GAMES
-    if gamestate.game_id is not None:
+      # MULTIPLAYER GAMES
+    if gamestate.gametype == "multiplayer":
         if gamestate.player1 == session["username"]:
             player = "1"
-            print(f"setting player to 1")
+            #print(f"setting player to 1")
 
             
         elif gamestate.player2 == session["username"]:
-            print(f"setting player to 2")
+            #print(f"setting player to 2")
             player = "2"
             hand_index -= 8
         
@@ -387,26 +396,36 @@ def handle_discard_card(data):
             gamestate.discardCard(player, hand_index)
             # gamestate.flipTurn()
             gamestate._hand2.replenishHand()
+        
+        if gamestate.numturns > 5:
+            gamestate.flipTurn()
+
+    
     
     # Send updated game state to all clients
     emit("game_update", gamestate.to_dict(), broadcast=True)
 
 @socketio.on("place_side_card")
-def place_side_card(data):
+def place_side_card(data): 
+    game_id = data['game_id']
 
-    global gamestate
+    for game in active_games:
+        if game[1] == game_id:
+            gamestate = game[0]
+        else:
+            return
+
     if not gamestate:
         return
     if gamestate.numturns < 5:
         return
-
 
     hand_index = data["hand_index"]
     caravan_card_index = data["caravan_card_index"]
     caravan_index = data["caravan_index"]
 
     # Determine player based on hand index
-    if gamestate.is_singleplayer == True:
+    if gamestate.gametype == "singleplayer" or gamestate.gametype == "AI":
         if hand_index < 8:
             player = "1"
         else:
@@ -414,23 +433,21 @@ def place_side_card(data):
             hand_index -= 8  # Adjust index for player 2's hand
 
     # DETERMINE IF IT IS GAME VS AI, IF IT IS, PREVENT PLAYER 2 FROM MAKING A MOVE
-    if gamestate._is_vs_ai == True:
+    if gamestate.gametype == "AI":
         if player == "2":
             return
-    
-    # MULTIPLAYER GAMES
-    if gamestate.game_id is not None:
+        
+     # MULTIPLAYER GAMES
+    if gamestate.gametype == "multiplayer":
         if gamestate.player1 == session["username"]:
             player = "1"
-            print(f"setting player to 1")
-    
+            #print(f"setting player to 1")
+
+            
         elif gamestate.player2 == session["username"]:
-            print(f"setting player to 2")
+            #print(f"setting player to 2")
             player = "2"
             hand_index -= 8
-
-        else:
-            return
         
 
     placed_card_value = gamestate._hand1.getHand()[hand_index].value() if player == "1" else gamestate._hand2.getHand()[hand_index].value()
@@ -440,28 +457,61 @@ def place_side_card(data):
     player_caravans = caravan_index < 3  # True if targeting player 1's caravans
     target_caravan = gamestate._board.getCaravan1()[target_caravan_index] if player_caravans else gamestate._board.getCaravan2()[target_caravan_index]
     if not target_caravan or caravan_card_index >= len(target_caravan):
-        print("Invalid target caravan or card index")
+        #print("Invalid target caravan or card index")
         return
+    
+    print(placed_card_value)
 
-    if placed_card_value in [11, 13]:  # If it's a J or K
+    if placed_card_value in [11, 12, 13]:  # If it's a J or K
         # Use 0-5 range for caravans in bonus cards (0-2 for player 1, 3-5 for player 2)
         bonus_caravan_index = target_caravan_index if player_caravans else target_caravan_index + 3
         
-        gamestate._bonus_cards.append([placed_card_value, bonus_caravan_index, caravan_card_index])  
+         # FLIP FOR QUEEN
+        if placed_card_value == 12:
+            # return if top card is not the the target card
+            if caravan_card_index != len(target_caravan)-1:
+                    return
+            if player_caravans: #p1
+                # Get the queen's suit to update the caravan suit
+                queen_suit = gamestate._hand1.getHand()[hand_index].getSuit()
+                # Update the suit for the caravan
+                gamestate._caravans1_suit[target_caravan_index] = queen_suit
+                        # Flip the direction
+                gamestate.flipOrder(target_caravan_index)
+
+            else: #p2
+                queen_suit = gamestate._hand2.getHand()[hand_index].getSuit()
+                gamestate._caravans2_suit[target_caravan_index] = queen_suit
+                gamestate.flipOrder(target_caravan_index)
+
+        elif placed_card_value == 11:
+            if caravan_index < 3:
+                target_player = "1"
+            else:
+                target_player = "2"
+            gamestate._board.removeCard(target_player, target_caravan_index, caravan_card_index)
+            for card in gamestate.bonus_cards:
+                if card[1] == target_caravan_index and card[2] == caravan_card_index:
+                    gamestate.bonus_cards.remove(card)
+
+
+        if placed_card_value != 11:
+            gamestate.bonus_cards.append([placed_card_value, bonus_caravan_index, caravan_card_index])  
+
         if player == "1":
             gamestate._hand1.removeCard(hand_index)
+            gamestate._hand1.replenishHand()
+
         else:
             gamestate._hand2.removeCard(hand_index)
-
-        gamestate.flipTurn()
-        if player == "1":
             gamestate._hand2.replenishHand()
-        else:
-            gamestate._hand1.replenishHand()
+
     else: 
         print("not a K or J, rejecting...")
-            
-    print("CARAVAN BONUSES", gamestate._bonus_cards)
+
+        gamestate.flipTurn()
+
+    #print("CARAVAN BONUSES", gamestate.bonus_cards)
 
     # SAME STUFF AS OTHER PLACE_CARD
 
@@ -480,22 +530,34 @@ def place_side_card(data):
         response_data = gamestate.to_dict()
         response_data['player'] = player
 
-        print(f"Caravan values 1: {gamestate.caravan_values1}")
-        print(f"Caravan values 2: {gamestate.caravan_values2}")
+        #print(f"Caravan values 1: {gamestate.caravan_values1}")
+        #print(f"Caravan values 2: {gamestate.caravan_values2}")
         
         # Send updated game state to all clients
-        print("Sending game_update:", response_data)
+        #print("Sending game_update:", response_data)
         emit("game_update", response_data, broadcast=True)
         
     except Exception as e:
-        print(f"Error during side card placement: {e}")
+        #print(f"Error during side card placement: {e}")
         # If there's an error, provide feedback
         emit("game_update", {"error": "An error occurred during side card placement."}, broadcast=True)
 
 @socketio.on("make_ai_move")
-def make_ai_move():
+def make_ai_move(data):
     global gamestate
+    game_id = data
+    print(game_id)
+    print("\n starting ai move \n ")
+
+    for game in active_games:
+        if game[1] == game_id:
+            gamestate = game[0]
+        else:
+            print("game not found in active_games")
+            return
+        
     if not gamestate:
+        print("no gamestate in ai, returning...")
         return
 
     if gamestate.getTurn() != "2":
@@ -507,7 +569,8 @@ def make_ai_move():
         timeout_counter += 1
         print(timeout_counter)
         caravan_index = random.randint(0, 2)
-        hand_index = random.randint(0, min(4, len(gamestate._hand2.getHand())-1)) if gamestate._hand2.getHand() else 0
+        hand_index = random.randint(0, len(gamestate._hand2.getHand())-1) if gamestate._hand2.getHand() else 0
+
         # Only try to access caravan card index if the caravan has cards
         if len(gamestate._board.getCaravan2()[caravan_index]) > 0:
             caravan_card_index = random.randint(0, len(gamestate._board.getCaravan2()[caravan_index])-1)
@@ -519,7 +582,7 @@ def make_ai_move():
         if not gamestate._hand2.getHand():
             break
 
-        print(f"\n\ncaravan index: {caravan_index}, hand_index: {hand_index}, caravan card index {caravan_card_index}\n\n\ ")
+        #print(f"\n\ncaravan index: {caravan_index}, hand_index: {hand_index}, caravan card index {caravan_card_index}\n\n\ ")
 
         placed_card_value2 = gamestate._hand2.getHand()[hand_index].value() 
         top_card_value2 = gamestate._board._caravans2[caravan_index][-1].value() if gamestate._board._caravans2[caravan_index] else None
@@ -529,30 +592,68 @@ def make_ai_move():
 
         gamestate.handleDirectionsSuits()
 
-        # HANDLE PLACING KINGS JACKS
+        # HANDLE PLACING KINGS JACKS (AND QUEENS)
 
-        if gamestate.numturns > 5 and (placed_card_value2 == 11 or placed_card_value2 == 13):
+        if gamestate.numturns > 5 and (placed_card_value2 == 11 or placed_card_value2 == 13 or placed_card_value2 == 12):
 
             # Allow players to place K/J on either their own or opponent's caravans
-            target_caravan_index = caravan_index * (random.randint(1, 2))
+            target_caravan_index = random.randint(0, 2)  # Always 0, 1, or 2
+            bonus_caravan_index = target_caravan_index + 3
+
             # Only add bonus card if there's at least one card in the target caravan
             target_is_player1 = target_caravan_index < 3
             target_caravan = gamestate._board.getCaravan1()[target_caravan_index] if target_is_player1 else gamestate._board.getCaravan2()[target_caravan_index - 3]
 
             if target_caravan and len(target_caravan) > 0:
                 valid_caravan_card_index = random.randint(0, len(target_caravan) - 1)
-                gamestate._bonus_cards.append([placed_card_value2, target_caravan_index, valid_caravan_card_index])  
+
+                # FLIP FOR QUEEN
+                if placed_card_value2 == 12:
+                    #return if queen is not placed ontop card
+                    if caravan_card_index != len(target_caravan)-1:
+                        continue
+
+                    if target_caravan_index >= 3:
+                        target_caravan_index = target_caravan_index % 3  # Convert to 0, 1, or 2
+                    
+                    queen_suit = gamestate._hand2.getHand()[hand_index].getSuit()
+                    gamestate._caravans2_suit[target_caravan_index] = queen_suit
+                    gamestate.flipOrder(target_caravan_index)
+
+                # REMOVE FOR JACKS
+                elif placed_card_value2 == 11:
+                    if caravan_index < 3:
+                        target_player = "1"
+                    else:
+                        target_player = "2"
+                    gamestate._board.removeCard(target_player, target_caravan_index, caravan_card_index)
+
+                    to_remove = []
+                    for i, card in enumerate(gamestate.bonus_cards):
+                        if card[1] == target_caravan_index and card[2] == caravan_card_index:
+                            to_remove.append(i)
+                    # Remove in reverse order to avoid index shifting problems
+                    for i in sorted(to_remove, reverse=True):
+                        gamestate.bonus_cards.pop(i)
+
+
+                if placed_card_value2 != 11:
+                    gamestate.bonus_cards.append([placed_card_value2, target_caravan_index, valid_caravan_card_index]) 
+
                 gamestate._hand2.removeCard(hand_index)
                 gamestate.flipTurn()
                 gamestate._hand1.replenishHand()
                 valid_move = True
 
-        elif gamestate.numturns > 5 and (placed_card_value2 != 11) and (placed_card_value2 != 13):
+        elif gamestate.numturns > 5 and (placed_card_value2 != 11) and (placed_card_value2 != 13) and (placed_card_value2 != 12):
             valid_move = False    
             # If no direction is set yet
             if not direction2:
                 valid_move = True
             elif placed_card_value2 > 10:
+                valid_move = True
+            # if there is no top card, move is always valid
+            elif top_card_suit2 == None or top_card_value2 == None:
                 valid_move = True
             # CANNOT PLAY CARD OF SAME VALUE ATOP ITSELF (NOT COUNTING PICTURE CARDS)
             elif placed_card_value2 == top_card_value2:
@@ -564,13 +665,6 @@ def make_ai_move():
                 valid_move = True
                     
             if valid_move:
-                print(f"Valid move found: card: {placed_card_value2}, caravan {caravan_index}")
-                    # FLIP FOR QUEEN
-                if placed_card_value2 == 12:
-                    # Get the queen's suit to update the caravan suit
-                    queen_suit = gamestate._hand2.getHand()[hand_index].getSuit()
-                    # Update the suit for the caravan
-                    gamestate._caravans2_suit[caravan_index] = queen_suit
                 # Flip the direction
                 gamestate.flipOrder(caravan_index)
                 gamestate.placeCard(player, hand_index, caravan_index)
@@ -604,17 +698,17 @@ def make_ai_move():
         response_data = gamestate.to_dict()
         response_data['player'] = player
 
-        print(f"Caravan values 1: {gamestate.caravan_values1}")
-        print(f"Caravan values 2: {gamestate.caravan_values2}")
+        #print(f"Caravan values 1: {gamestate.caravan_values1}")
+        #print(f"Caravan values 2: {gamestate.caravan_values2}")
         
         # Send updated game state to all clients
-        print("Sending game_update:", response_data)
+        #print("Sending game_update:", response_data)
         
         # Send updated game state to all clients
         emit("game_update", response_data, broadcast=True)
         
     except Exception as e:
-        print(f"Error during AI move: {e}")
+        #print(f"Error during AI move: {e}")
         # If there's an error, redirect to the index page or reset the game
         emit("game_update", {"error": "An error occurred. Starting a new game."}, broadcast=True)
 

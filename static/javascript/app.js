@@ -50,12 +50,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const gameId = urlParams.get('game_id');
         console.log("Game ID:", gameId);
 
-        // Access game state and update UI
-        const player1 = data.player1;
-        const player2 = data.player2;
-        document.getElementById("player1").textContent = player1;
-        document.getElementById("player2").textContent = player2 || "Waiting for Player 2";
+        if (gameId != null) {
+            // Access game state and update UI
+            const player1 = data.player1;
+            const player2 = data.player2;
+            document.getElementById("player1").textContent = player1;
+            document.getElementById("player2").textContent = player2 || "Waiting for Player 2";
+        }
 
+        console.log("game id: ", data.game_id)
+        let game_id = data.game_id
+        
         // Show the game container
         document.getElementById("gameContainer").style.display = "block";
 
@@ -64,31 +69,36 @@ document.addEventListener('DOMContentLoaded', function () {
         updateHands(data.hand2.hand, "hand2");
 
         // Update board
-        updateBoard(data.board);
+        updateBoard(data.board, game_id);
 
         // update discard piles
-        updateDiscardPiles(data.discard_pile1, data.discard_pile2);
+        updateDiscardPiles(data.discard_pile1, data.discard_pile2, game_id);
 
         // update bonus cards
-        updateBonusCards(data.bonus_cards);
+        updateBonusCards(data.bonus_cards, game_id);
 
 
         // Attach event listeners
-        attachCardListeners();
-        attachCaravanListeners();
-        attachCaravanCardListeners();
-        attachDiscardListeners();
+        attachCardListeners(game_id);
+        attachCaravanListeners(game_id);
+        attachCaravanCardListeners(game_id);
+        attachDiscardListeners(game_id);
 
 
 
         // Update caravan status if applicable
-        updateCaravanStatus(data.caravan_status);
+        updateCaravanStatus(data.caravan_status, game_id);
 
         // Update caravan values
+        // if (data.caravan_values2 != null) {
+        //     mergedValues = [...data.caravan_values1, ...data.caravan_values2];
+        // }   else {
+        //     mergedValues = data.caravan_values1
+        // }
         mergedValues = [...data.caravan_values1, ...data.caravan_values2];
         console.log("Merged caravan values:", mergedValues);
-        updateCaravanValues(mergedValues);
 
+        updateCaravanValues(mergedValues);
 
         // Update winner message if present
         if (data.win_status) {
@@ -99,15 +109,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // IF IT IS A GAME VS AI 
-        if (data.is_vs_ai == true && data.current_turn === "2") {
+        if (data.gametype === "AI" && data.current_turn === "2") {
             setTimeout(() => {
                 console.log("AI's turn - making move");
-                socket.emit("make_ai_move");
+                socket.emit("make_ai_move", game_id);
             }, 1000); 
 
             console.log("making ai move")
-            socket.emit("make_ai_move");
-        }
+            socket.emit("make_ai_move", game_id);
+        }   else {console.log("not ai move")}
     });
 
     function updateHands(handData, handClass) {
@@ -204,7 +214,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    function attachCaravanCardListeners() {
+    function attachCaravanCardListeners(game_id) {
         document.querySelectorAll('.caravan .card').forEach(card => {
             card.addEventListener('click', function () { // Use function() to keep `this` context
                 console.log("Card clicked:", card.textContent);
@@ -226,7 +236,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 socket.emit("place_side_card", {
                     hand_index: selectedCard,
                     caravan_index: caravanIndex,
-                    caravan_card_index: caravanCardIndex
+                    caravan_card_index: caravanCardIndex,
+                    game_id: game_id
                 });
     
                 // Reset selection
@@ -238,7 +249,7 @@ document.addEventListener('DOMContentLoaded', function () {
     
     
 
-    function attachCaravanListeners() {
+    function attachCaravanListeners(game_id) {
         document.querySelectorAll(".caravan").forEach(slot => {
             slot.addEventListener("click", function () {
                 if (selectedCard !== null) {
@@ -251,7 +262,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     socket.emit("place_card", {
                         hand_index: selectedCard,
-                        caravan_index: adjustedIndex
+                        caravan_index: adjustedIndex,
+                        game_id: game_id
                     });
 
                     // Reset selection
@@ -311,7 +323,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     
 
-    function attachDiscardListeners() {
+    function attachDiscardListeners(game_id) {
         document.querySelectorAll('.discard-zone').forEach(zone => {
             zone.addEventListener('click', function () {
                 if (selectedCard !== null) {
@@ -323,7 +335,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         console.log(`Discarding card from hand index ${selectedCard}`);
 
                         socket.emit("discard_card", {
-                            hand_index: selectedCard
+                            hand_index: selectedCard,
+                            game_id: game_id
                         });
 
                         // Reset selection

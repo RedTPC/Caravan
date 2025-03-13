@@ -72,6 +72,13 @@ class Board:
 
         elif player == "2":
             self._caravans2[caravan].append(card)
+        
+    def removeCard(self, player, caravan, card_index):
+        if player == "1" and 0 <= caravan < len(self._caravans1) and 0 <= card_index < len(self._caravans1[caravan]):
+            self._caravans1[caravan].pop(card_index)
+        elif player == "2" and 0 <= caravan < len(self._caravans2) and 0 <= card_index < len(self._caravans2[caravan]):
+            self._caravans2[caravan].pop(card_index)
+
 
         
     def toDict(self):
@@ -142,17 +149,16 @@ class Game:
         self._discard_pile2 = []
         self._turn = "1"
         self.numturns = 0
-        self._bonus_cards = [] # list of lists (card, caravan_index 1-6, caravan_card_index)
-        self._is_vs_ai = False
+        self.bonus_cards = [] # list of lists (card, caravan_index 1-6, caravan_card_index)
         self.win_status = ""
         self.player1 = ""
         self.player2 = ""
         self.game_id = None
         self.game_started = False
-        self.is_singleplayer = True
-        self.caravan_values1 = []
-        self.caravan_values2 = []
+        self.caravan_values1 = [0, 0, 0]
+        self.caravan_values2 = [0, 0, 0]
         self.waiting_for_player = False
+        self.gametype = None
 
     def ShuffleDecks(self):
         self._deck1.shuffle()
@@ -173,7 +179,7 @@ class Game:
             self._turn = "2"
         else:
             self._turn = "1"
-        print(f"flipping turn to {self._turn}")
+        #print(f"flipping turn to {self._turn}")
 
     def flipOrder(self, caravan_index):
         if self._turn == "1":
@@ -211,12 +217,12 @@ class Game:
             card = self._hand1.getHand()[hand_index]
             self._hand1.removeCard(hand_index)
             self._discard_pile1.append(card)
-            print(f"Discard pile 1: {str(self._discard_pile1)}")
+            #print(f"Discard pile 1: {str(self._discard_pile1)}")
         elif player == "2":
             card = self._hand2.getHand()[hand_index]
             self._hand2.removeCard(hand_index)
             self._discard_pile2.append(card)
-            print(f"Discard pile 2: {str(self._discard_pile2)}")
+            #print(f"Discard pile 2: {str(self._discard_pile2)}")
             
     def getValues(self):
         self.caravan_values1 = [0, 0, 0]  
@@ -236,9 +242,9 @@ class Game:
         caravans1 = self._board.getCaravan1()
         caravans2 = self._board.getCaravan2()
         
-        print("Bonus Cards List: ")
-        for bonus_card in self._bonus_cards:
-            print(f"\n\nBonus Card: {bonus_card[0]}, Bonus Card Info: {bonus_card}\n\n")
+        #print("Bonus Cards List: ")
+        for bonus_card in self.bonus_cards:
+            #print(f"\n\nBonus Card: {bonus_card[0]}, Bonus Card Info: {bonus_card}\n\n")
             
             # KINGS
             if bonus_card[0] == 13:  # King doubles card value
@@ -303,9 +309,15 @@ class Game:
                     result[i] = "p2"
         
         # replaces current final caravan status with the results only if the caravan has not already been sold and there is a new winner
-        for i in range(3):
-            if result[i] is not None and self._caravan_status[i] is None:
-                self._caravan_status[i] = result[i]
+        # for i in range(3):
+        #     if result[i] is not None and self._caravan_status[i] is None:
+
+            self._caravan_status[i] = result[i]
+        print(result)
+
+        for i in result:
+            if i == None:
+                ""
 
         p1count = 0
         p2count = 0   
@@ -319,9 +331,9 @@ class Game:
         elif p2count >= 2:
             return "p2"
         else: 
-            print(f"neither player won p1:{p1count}, p2:{p2count}")
-            print(self._caravan_status)
-            print(self._board)
+            #print(f"neither player won p1:{p1count}, p2:{p2count}")
+            #print(self._caravan_status)
+            #print(self._board)
 
             return ""
         
@@ -400,7 +412,7 @@ class Game:
             if len(caravan) > 0:
                 self._caravans2_suit[i] = self._board.getCaravan2()[i][-1].getSuit()
 
-        print(f"Directions: {self._caravans1_direction, self._caravans2_direction}, Suits: {self._caravans1_suit, self._caravans2_suit}")   
+        #print(f"Directions: {self._caravans1_direction, self._caravans2_direction}, Suits: {self._caravans1_suit, self._caravans2_suit}")   
         
         
     def to_dict(self):
@@ -412,15 +424,15 @@ class Game:
             'board': self._board.toDict(),
             'discard_pile1': [card.to_dict() for card in self._discard_pile1],
             'discard_pile2': [card.to_dict() for card in self._discard_pile2],
-            # 'bonus_cards': {item[0]: item[1:] for item in self._bonus_cards}
-            'bonus_cards': self._bonus_cards,
+            # 'bonus_cards': {item[0]: item[1:] for item in self.bonus_cards}
+            'bonus_cards': self.bonus_cards,
             'player1' : self.player1,
             'player2' : self.player2,
             'caravan_values1' : self.caravan_values1,
-            'caravan_values1' : self.caravan_values1,
+            'caravan_values2' : self.caravan_values2,
             'game_id' : self.game_id,
             'waiting_for_player' : self.waiting_for_player,
-            'is_vs_ai' : self._is_vs_ai,
+            'gametype' : self.gametype,
             'current_turn' : self.getTurn(),
             'win_status' : self.win_status
         }
@@ -435,9 +447,9 @@ class Game:
 
 if __name__ == "__main__":
     mygame = Game()
-    print(mygame)
+    #print(mygame)
     mygame.startGame()
-    print(mygame)
+    #print(mygame)
 
     
 
@@ -451,9 +463,9 @@ if __name__ == "__main__":
     mygame.placeCard("2", 3, 1)
     mygame.placeCard("2", 4, 1)
 
-    print(mygame.getValues())
+    #print(mygame.getValues())
 
 
-    print(mygame)
+    #print(mygame)
     
-    print(mygame.checkForWin())
+    #print(mygame.checkForWin())
