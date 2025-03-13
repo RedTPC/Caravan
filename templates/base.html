@@ -1,23 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/styles.css') }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Caravan</title>
+
+    <!-- Socket.IO client -->
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <!-- Link to the external JavaScript -->
+    <script src="static/javascript/app.js"></script>
+
 </head>
 
-    <h1>Welcome to Caravan!</h1>
-    <nav>
+<h1>Welcome to Caravan!</h1>
+<nav>
     <a href="{{ url_for('index') }}">
         <button id="index">Home</button>
     </a>
+
+    {% if 'username' not in session %}
     <a href="{{ url_for('login') }}">
         <button id="login">Login</button>
     </a>
     <a href="{{ url_for('register') }}">
         <button id="register">Register</button>
     </a>
+    {% endif %}
+
     {% if 'username' in session %}
     <a href="{{ url_for('logout') }}">
         <button id="logout">Logout</button>
@@ -27,7 +38,15 @@
     </a>
     {% endif %}
 
-    </nav>
+    <button id="createGameButton">Create Game</button>
+
+    <button id="createAIGameButton">Play VS. AI</button>
+
+    <button id="createMultiplayerButton">Create Room</button>
+
+    <input type="text" id="gameIdInput" placeholder="Enter Game ID">
+    <button id="joinGameButton">Join Room</button>
+</nav>
 
 
 {% block content %}
