@@ -51,3 +51,21 @@ button:hover {
     transform: translateY(-5px);
 }
 
+.deck-card-slot-area {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px 0;
+}
+
+.deck-card-slot-area {
+    width: 80px;
+    height: 120px;
+    border: 2px dashed #888;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 10px auto;
+    cursor: pointer;
+    background-color: rgba(200, 200, 200, 0.3);
+}

@@ -3,19 +3,6 @@
 {% block content %}
 
 <body>
-    <nav>
-    <!-- Start Game button -->
-    <button id="createGameButton">Create Game</button>
-
-    <button id="createAIGameButton">Play VS. AI</button>
-
-    <button id="createMultiplayerButton">Create Room</button>
-
-    <input type="text" id="gameIdInput" placeholder="Enter Game ID">
-    <button id="joinGameButton">Join Room</button>
-
-    </nav>
-
     <div id="winnerMessage" style="display: none; font-size: 24px; color: green; text-align: center; margin-top: 20px;">
     </div>
 
@@ -62,12 +49,6 @@
             <!-- Cards will be added dynamically -->
         </div>
     </div>
-
-    <!-- Socket.IO client -->
-    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
-
-    <!-- Link to the external JavaScript -->
-    <script src="static/javascript/app.js"></script>
 </body>
 
 {% endblock %}

@@ -31,6 +31,10 @@ button:hover {
     background-color: #45a049;
 }
 
+a {
+    text-decoration: none;  /* Removes the underline */
+}
+
 .hand1, .hand2 {
     display: flex;
     flex-wrap: wrap;
@@ -137,6 +141,65 @@ button:hover {
     margin: 10px auto;
     cursor: pointer;
     background-color: rgba(200, 200, 200, 0.3);
+}
+
+.deck-card-slot {
+    width: 80px;
+    height: 120px;
+    border: 2px dashed #888;
+    border-radius: 8px;
+    display: flex;
+    /* justify-content: center;
+    align-items: center; */
+    margin: 10px auto;
+    cursor: pointer;
+    background-color: rgba(200, 200, 200, 0.3);
+    justify-content: center;  /* Horizontally center the content */
+    align-items: center;  /* Vertically center the content */
+}
+
+
+.deck-container {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr); /* Creates 3 columns */
+    gap: 10px;
+    justify-content: center;
+    width: max-content;
+    margin: auto;
+}
+
+.deck-scroll-container {
+    display: flex;
+    overflow-x: auto;  /* Enables horizontal scrolling */
+    white-space: nowrap; /* Prevents wrapping */
+    gap: 10px; /* Spacing between cards */
+    padding: 10px;
+    width: 100%; /* Adjust as needed */
+    max-width: 800px; /* Limit the visible width */
+    border: 2px solid #ccc; /* Optional: for visibility */
+    scroll-snap-type: x mandatory; /* Smooth scrolling to each card */
+}
+
+.deck-card-option {
+    flex: 0 0 80px; /* Fixes each card’s width */
+    height: 120px;
+    border: 2px dashed #888;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(200, 200, 200, 0.3);
+    cursor: pointer;
+
+    scroll-snap-align: center; /* Ensures smooth alignment */
+}
+
+.deck-card-option:hover {
+    background-color: rgba(200, 200, 200, 0.5);
+}
+
+.deck-card-slot:hover {
+    background-color: rgba(200, 200, 200, 0.5);
 }
 
 .discard-zone:hover {

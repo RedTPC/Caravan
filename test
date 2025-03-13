@@ -1,7 +1,15 @@
 
-CREATE TABLE users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(100),
-    email VARCHAR(100),
-    password VARCHAR(100)
+CREATE TABLE decks (
+    username VARCHAR(100) PRIMARY KEY,
+    deck1 VARCHAR(100),
+    deck2 VARCHAR(100),
+    deck3 VARCHAR(100),
+    deck4 VARCHAR(100),
+    deck5 VARCHAR(100),
+    deck6 VARCHAR(100),
+    deck7 VARCHAR(100),
+    deck8 VARCHAR(100),
+    deck9 VARCHAR(100),
+    deck10 VARCHAR(100)
+
 );

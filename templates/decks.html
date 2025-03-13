@@ -1,26 +1,25 @@
 {% extends "base.html" %}
 
 {% block content %}
-<link rel="stylesheet" href="/styles/decks.css">
-<body class="container mt-5">
+<!-- <link rel="stylesheet" href="/styles/decks.css"> -->
+
+<body>
     <h2>Decks</h2>
-
-    {% for i in range(0, 30) %}
-    <div class="deck-card-slot" id="deck-card-slot-{{ i }}">
-        <!-- You can add content or other attributes here -->
-        card number {{ i }}
+    <div class="deck-container">
+        {% for i in range(0, 30) %}
+        <div class="deck-card-slot" id="deck-card-slot-{{ i }}" data-slot="{{ i }}">
+        </div>
+        {% endfor %}
     </div>
-    {% endfor %}
 
-    {% for i in deck %}
-    <div class="deck-card-option" id="deck-card-option-{{ i }}">
-        <!-- You can add content or other attributes here -->
-        {{ i }}
+    <div class="deck-scroll-container">
+        {% for i in deck %}
+        <div class="deck-card-option" id="deck-card-option-{{ i }}" data-card="{{ i }}">{{ i }}</div>
+        {% endfor %}
     </div>
-    {% endfor %}
 
-
+    <button id="saveDeckButton">Save Deck</button>
 
 </body>
 
-    {% endblock %}
+{% endblock %}

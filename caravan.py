@@ -1,4 +1,6 @@
 import random
+import sqlite3
+from utils import loadCustomDeck
 
 initial_hand_size = 8
 final_hand_size = 5
@@ -41,6 +43,14 @@ class Deck():
             for face in faces:
                 
                 self._deck.append(Card(suit, face))
+
+    def populateCustomDeck(self, username):
+        custom_deck = loadCustomDeck(username)
+
+        for card_str in custom_deck:
+            self._deck.append(Card(card_str[1], card_str[0]))
+
+        
 
     def popCard(self):
         top_card = self._deck[0]

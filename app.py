@@ -4,8 +4,10 @@ from flask_socketio import SocketIO, emit
 from forms import LoginForm, RegisterForm
 from functools import wraps
 from caravan import Game
+from utils import loadCustomDeck, saveCustomDeck
 import random
 import sqlite3
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
@@ -95,6 +97,13 @@ def decks():
         for face in faces:
             deck.append(face+suit)
     return render_template("decks.html", deck=deck)
+
+@login_required
+@socketio.on("save_deck")
+def save_deck(data):
+    deck = data['selectedCards']
+    print(deck)
+    saveCustomDeck(session['username'], deck)
 
 @socketio.on("create_game")
 def create_game():

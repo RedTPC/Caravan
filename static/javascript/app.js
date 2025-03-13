@@ -31,6 +31,33 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // DECK BUILDER STUFF
+
+    document.getElementById("saveDeckButton").addEventListener("click", () => {
+        console.log("Save Deck Button Clicked");
+    
+        let selectedCards = [];
+        document.querySelectorAll(".deck-card-slot.filled").forEach(slot => {
+            selectedCards.push(slot.dataset.card);
+        });
+    
+        console.log("Selected Cards:", selectedCards);
+    
+        socket.emit("save_deck", { selectedCards: selectedCards });
+    });
+
+    attachDeckOptionCardListeners();
+    attachDeckSlotCardListeners();
+
+    ///////////////////////////
+
+
+
+
+
+
+
+
     function sleep(milliseconds) {
         var start = new Date().getTime();
         for (var i = 0; i < 1e7; i++) {
@@ -423,5 +450,46 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
-    
+
+    function attachDeckOptionCardListeners() {
+        document.querySelectorAll(".deck-card-option").forEach(card => {
+            card.addEventListener("click", function () {
+                // Set selectedCard to the value of the clicked card (from the data-card attribute)
+                selectedCard = this.dataset.card;
+                console.log(`Selected card: ${selectedCard}`);
+
+                // Add visual feedback (highlight the selected card)
+                document.querySelectorAll(".deck-card-option").forEach(c => c.classList.remove("selected"));
+                this.classList.add("selected");
+            });
+        });
+    }
+
+    function attachDeckSlotCardListeners() {
+        document.querySelectorAll(".deck-card-slot").forEach(slot => {
+            slot.addEventListener("click", function () {
+                // Only proceed if a card is selected
+                if (selectedCard !== null) {
+                    // Check if the slot is already filled
+                    if (this.dataset.card) {
+                        alert("This slot is already filled!");
+                        return;
+                    }
+
+                    // Visually move the card into the slot
+                    this.textContent = `${selectedCard}`;  // Set the card text in the slot
+                    this.classList.add("filled");  // Add a "filled" class for styling
+                    this.dataset.card = selectedCard;  // Store the card data in the slot's dataset
+
+                    // Update the visual state of the card options (you may want to reset the selected card)
+                    selectedCard = null;
+
+                    // Optionally, reset the "selected" class for deck cards
+                    document.querySelectorAll(".deck-card-option").forEach(c => c.classList.remove("selected"));
+                } else {
+                    alert("Please select a card first!");
+                }
+            });
+        });
+    }
 });
