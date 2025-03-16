@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Start & Join Game
     document.getElementById("createGameButton").addEventListener("click", () => {
         console.log("Create game button clicked");
+        console.log("Socket status:", socket);
         socket.emit("create_game");
     });
 
@@ -31,19 +32,27 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    document.getElementById("useDeck").addEventListener("click", () => {
+        console.log("Use deck button clicked");
+        sendSelection()    
+    });
+
     // DECK BUILDER STUFF
 
-    document.getElementById("saveDeckButton").addEventListener("click", () => {
-        console.log("Save Deck Button Clicked");
+
+    document.addEventListener("click", (event) => {
+        if (event.target && event.target.id === "saveDeckButton") {
+            console.log("Save Deck Button Clicked");
     
-        let selectedCards = [];
-        document.querySelectorAll(".deck-card-slot.filled").forEach(slot => {
-            selectedCards.push(slot.dataset.card);
-        });
+            let selectedCards = [];
+            document.querySelectorAll(".deck-card-slot.filled").forEach(slot => {
+                selectedCards.push(slot.dataset.card);
+            });
     
-        console.log("Selected Cards:", selectedCards);
+            console.log("Selected Cards:", selectedCards);
     
-        socket.emit("save_deck", { selectedCards: selectedCards });
+            socket.emit("save_deck", { selectedCards: selectedCards });
+        }
     });
 
     attachDeckOptionCardListeners();
@@ -51,10 +60,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     ///////////////////////////
 
-
-
-
-
+    // deck selector
+    
+    requestDropdownOptions();
 
 
 
@@ -492,4 +500,46 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     }
+
+    function requestDropdownOptions() {
+            // Request dropdown options when the page loads
+            socket.emit("deck_request_options");
+
+            console.log("req dropdown options called")
+
+            // Receive options from the server
+            socket.on("dropdown_options", function(options) {
+
+                console.log(options)
+
+                let dropdown = document.getElementById("deck-options");
+
+                if (dropdown != null) {
+                dropdown.innerHTML = ""
+                  // Clear existing options
+
+                options.forEach(option => {
+                    let opt = document.createElement("option");
+                    opt.value = option;
+                    opt.textContent = option;
+                    dropdown.appendChild(opt);
+                });
+                if (options.length === 0) {
+                    console.log("options empty");
+                }
+            };
+        });
+    }
+
+    function sendSelection() {
+        let selectedValue = document.getElementById("deck-options").value;
+        console.log("Selected:", selectedValue);
+        socket.emit("deck_dropdown_selection", selectedValue);
+    }
+
+    // // Listen for server response
+    // socket.on("send_deck_choice", function(data) {
+    //     console.log("Server Response:", data);
+    // });
+
 });

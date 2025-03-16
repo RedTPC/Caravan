@@ -44,13 +44,12 @@ class Deck():
                 
                 self._deck.append(Card(suit, face))
 
-    def populateCustomDeck(self, username):
-        custom_deck = loadCustomDeck(username)
-
+    def populateCustomDeck(self, custom_deck):
         for card_str in custom_deck:
-            self._deck.append(Card(card_str[1], card_str[0]))
-
-        
+            if len(card_str) == 3:
+                self._deck.append(Card(card_str[2], card_str[0:2]))
+            else:
+                self._deck.append(Card(card_str[1], card_str[0]))
 
     def popCard(self):
         top_card = self._deck[0]
@@ -140,13 +139,24 @@ class Hand():
     def __str__(self):
         return ', '.join(str(card) for card in self._hand)
 
-class Game:
-    def __init__(self):
+class Game():
+    def __init__(self, custom_deck1, custom_deck2):
+
+
         self._board = Board()
         self._deck1 = Deck()
         self._deck2 = Deck()
-        self._deck1.populateDeck()
-        self._deck2.populateDeck()
+
+        if custom_deck1 == False:
+            self._deck1.populateDeck()
+        else:
+            self._deck1.populateCustomDeck(custom_deck1)
+
+        if custom_deck2 == False:
+            self._deck2.populateDeck()
+        else:
+            self._deck2.populateCustomDeck(custom_deck2)
+
         self._hand1 = Hand(self._deck1)
         self._hand2 = Hand(self._deck2)
         self._caravan_status = [None, None, None] # contains the winning bids
@@ -192,12 +202,15 @@ class Game:
         #print(f"flipping turn to {self._turn}")
 
     def flipOrder(self, caravan_index):
+        print(f"flip order called on caravan {caravan_index}")
         if self._turn == "1":
+
             # Check if direction is None or not a list
             if self._caravans1_direction[caravan_index] is None or not isinstance(self._caravans1_direction[caravan_index], list):
                 # Default to descending if no direction set yet
                 self._caravans1_direction[caravan_index] = ["DESC", 0]
             elif self._caravans1_direction[caravan_index][0] == "ASC":
+                print("caravan direction is ASC")
                 self._caravans1_direction[caravan_index][0] = "DESC"
             else:
                 self._caravans1_direction[caravan_index][0] = "ASC"
@@ -336,82 +349,66 @@ class Game:
                 p1count += 1
             elif i == "p2":
                 p2count += 1
-        if p1count >= 2:
-            return "p1"
-        elif p2count >= 2:
-            return "p2"
-        else: 
-            #print(f"neither player won p1:{p1count}, p2:{p2count}")
-            #print(self._caravan_status)
-            #print(self._board)
+        if p1count + p2count == 3:
+            if p1count >= 2:
+                return "p1"
+            elif p2count >= 2:
+                return "p2"
+            else: 
+                #print(f"neither player won p1:{p1count}, p2:{p2count}")
+                #print(self._caravan_status)
+                #print(self._board)
 
+                return ""
+        else: 
             return ""
         
-
+    # list of lists (card, caravan_index 1-6, caravan_card_index)
     def handleDirectionsSuits(self):
+        print("bonus cards: ", self.bonus_cards)
+        bonus_queens = []
+        bonus_cards = self.bonus_cards
+        for card in bonus_cards:
+            if 12 == card[0]:
+                if card[1] > 2:
+                    card[1] -= 3
+                    if len(card) < 4:
+                        card.append("p2")
+                else:
+                    if len(card) < 4:
+                        card.append("p1")
+                bonus_queens.append(card) # 4th col = player
+
+        for card in bonus_queens:
+            if card[3] == "p1":
+                if (card[2] == len(self._board.getCaravan1()[card[1]])-1) or (card[2] == len(self._board.getCaravan1()[card[1]])-2):
+                    return
+            elif card[3] == "p2":
+                if (card[2] == len(self._board.getCaravan2()[card[1]])-1) or (card[2] == len(self._board.getCaravan2()[card[1]])-2):
+                    return
+                
+        print("bonus queens: ", bonus_queens)
+
         # PLAYER 1
-        number_cards1 = [[], [], []]
-        for i, caravan in enumerate(self._board.getCaravan1()):
-            for card in caravan:
-                if card.getFace() != "K" and card.getFace() != "Q" and card.getFace() != "J":
-                    number_cards1[i].append(card)
-            
-        
+        number_cards1 = self._board.getCaravan1()  
+
         for i, caravan in enumerate(number_cards1):
-            # MAKE SURE IT ISNT A QUEEN
-            if len(caravan) > 1 and (caravan[-1].getFace() != "Q") and (caravan[-2].getFace() != "Q"):
+            if len(number_cards1[i]) >= 2:
                 if caravan[-1].value() > caravan[-2].value():
                     self._caravans1_direction[i] = ["ASC", caravan[-1].value()]
                 elif caravan[-1].value() < caravan[-2].value():
                     self._caravans1_direction[i] = ["DESC", caravan[-1].value()]
 
-            # SUITS
+        # SUITS
         for i, caravan in enumerate(self._board.getCaravan1()):
             if len(caravan) > 0:
                 self._caravans1_suit[i] = self._board.getCaravan1()[i][-1].getSuit()
-
-        
-    
-        # Handle suits based on the last card of each caravan, including queens
-        for i, caravan in enumerate(self._board.getCaravan1()):
-            if len(caravan) > 0:
-                self._caravans1_suit[i] = self._board.getCaravan1()[i][-1].getSuit()
-                
-                # If the last card is a queen, it changes the direction as well
-                if caravan[-1].getFace() == "Q":
-                    if self._caravans1_direction[i] is None or not isinstance(self._caravans1_direction[i], list):
-                        self._caravans1_direction[i] = ["DESC", 0]
-                    elif self._caravans1_direction[i][0] == "ASC":
-                        self._caravans1_direction[i][0] = "DESC"
-                    else:
-                        self._caravans1_direction[i][0] = "ASC"
-        
-        # Similar for player 2
-        for i, caravan in enumerate(self._board.getCaravan2()):
-            if len(caravan) > 0:
-                self._caravans2_suit[i] = self._board.getCaravan2()[i][-1].getSuit()
-                
-                # If the last card is a queen, it changes the direction as well
-                if caravan[-1].getFace() == "Q":
-                    if self._caravans2_direction[i] is None or not isinstance(self._caravans2_direction[i], list):
-                        self._caravans2_direction[i] = ["DESC", 0]
-                    elif self._caravans2_direction[i][0] == "ASC":
-                        self._caravans2_direction[i][0] = "DESC"
-                    else:
-                        self._caravans2_direction[i][0] = "ASC"
-
- 
-
+                    
         # PLAYER 2
-        number_cards2 = [[], [], []]
-        for i, caravan in enumerate(self._board.getCaravan2()):
-            for card in caravan:
-                if card.getFace() != "K" and card.getFace() != "Q" and card.getFace() != "J":
-                    number_cards2[i].append(card)
-        
+        number_cards2 = self._board.getCaravan2()
+ 
         for i, caravan in enumerate(number_cards2):
-             # MAKE SURE IT ISNT A QUEEN
-            if len(caravan) > 1 and (caravan[-1].getFace() != "Q") and (caravan[-2].getFace() != "Q"):
+            if len(number_cards2[i]) >= 2:
                 if caravan[-1].value() > caravan[-2].value():
                     self._caravans2_direction[i] = ["ASC", caravan[-1].value()]
                 elif caravan[-1].value() < caravan[-2].value():

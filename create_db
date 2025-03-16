@@ -1,6 +1,5 @@
-
-CREATE TABLE decks (
-    username VARCHAR(100) PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS decks (
+    username VARCHAR PRIMARY KEY,
     deck1 VARCHAR(100),
     deck2 VARCHAR(100),
     deck3 VARCHAR(100),
@@ -11,7 +10,4 @@ CREATE TABLE decks (
     deck8 VARCHAR(100),
     deck9 VARCHAR(100),
     deck10 VARCHAR(100)
-
 );
-
-DELETE FROM decks;

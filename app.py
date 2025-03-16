@@ -7,6 +7,7 @@ from caravan import Game
 from utils import loadCustomDeck, saveCustomDeck
 import random
 import sqlite3
+import json
 
 
 app = Flask(__name__)
@@ -105,57 +106,125 @@ def save_deck(data):
     print(deck)
     saveCustomDeck(session['username'], deck)
 
+@login_required
+@socketio.on("deck_request_options")
+def send_options():
+    if "username" in session:
+        print("sending options from db...")
+        connection = sqlite3.connect("caravan.db")
+        db = connection.cursor()
+        print(f"username {session["username"]}")
+        db.execute("""SELECT * FROM decks WHERE username = ?""", (session["username"],))
+        decks_as_json = db.fetchone()
+        print(decks_as_json)
+        if decks_as_json == None:
+            return
+
+        count = -1
+        for col in decks_as_json:
+            if col != None:
+                count += 1
+        print(count)
+        
+        options = []
+        for deck_num in range(count):
+            options.append(f"deck{deck_num+1}")
+        socketio.emit("dropdown_options", options)  
+
+@socketio.on("deck_dropdown_selection")
+def handle_selection(deck):
+    print(f"User selected: {deck}")
+    session["preferred_deck"] = deck
+
 @socketio.on("create_game")
 def create_game():
-    global gamestate
-    gamestate = Game()
+    # load custom deck
+    if session["preferred_deck"] is not None:
+        print(session)
+        custom_deck1 = loadCustomDeck(session['username'], session['preferred_deck'])
+        custom_deck2 = loadCustomDeck(session['username'], session['preferred_deck'])
+
+        print(custom_deck1)        
+        print(custom_deck2)
+
+    else:
+        custom_deck2, custom_deck1 = False
+
+    gamestate = Game(custom_deck1, custom_deck2)
+
+
     gamestate.startGame()   
     gamestate.game_started = True
     gamestate.gametype = "singleplayer"
     game_id = ''.join([str(random.randint(0, 9)) for i in range(5)])
-    active_games.append([gamestate, game_id, gamestate.gametype])   
-    
-    response_data = gamestate.to_dict()
+    gamestate.game_id = game_id
+    active_games.append([gamestate, game_id])  
+    gamestate.getValues()
 
-    #print("created game")
+    response_data = gamestate.to_dict()
+    print("created game")
     emit("game_update", response_data, broadcast=True)
 
 @login_required
 @socketio.on("create_multiplayer_game")
 def create_multiplayer_game():
-    global gamestate
-    gamestate = Game()
-    gamestate.startGame()
     game_id = ''.join([str(random.randint(0, 9)) for i in range(5)])
-    active_games.append([gamestate, game_id, gamestate.gametype])
 
-    gamestate.player1 = session["username"]
-    #print(f"setting {gamestate.player1} to player 1")
-    gamestate.player2 = None
-    gamestate.game_started = False
-    gamestate.gametype = "multiplayer"
-    gamestate.getValues()
-    gamestate.game_id = game_id
-    gamestate.waiting_for_player = True
+    game_info = [True, session["username"]] #waiting_for_player, player1 username, 
 
-    response_data = gamestate.to_dict()
+    gamestate = None
+    active_games.append([gamestate, game_id, game_info])
+
     #print("making a room #", game_id)
     emit("redirect", {"url": f"/game/{game_id}"})
-    emit("game_update", response_data, broadcast=True)
 
 @login_required
 @socketio.on("join_multiplayer_game")
 def join_multiplayer_game(data):
     for game in active_games:
         game_id = data['game_id']
-        gamestate = game[0]
-        if game[1] == game_id and gamestate.waiting_for_player == True:
+        if game[1] == game_id and game[2][0] == True:
+
+            game[2][2] == session["username"]
+
+            # instantiate the game here
+            # load custom deck
+            # if session["preferred_deck"] is not None:
+            #     print(session)
+            #     custom_deck1 = loadCustomDeck(game[1][1], session['preferred_deck'])
+            #     custom_deck2 = loadCustomDeck(game[1][2], session['preferred_deck'])
+
+            #     print(custom_deck1)        
+            #     print(custom_deck2)
+            
+            # if session[""]
+
+            # else:
+            #     custom_deck2, custom_deck1 = False
+
+            custom_deck1, custom_deck2 = False
+
+            gamestate = Game(custom_deck1, custom_deck2)
+
+            gamestate.startGame()
+
+            gamestate.player1 = session["username"]
+            gamestate.player2 = session["username"]
+            gamestate.game_started = False
+            gamestate.gametype = "multiplayer"
+            gamestate.getValues()
+            gamestate.game_id = game_id
+            gamestate.waiting_for_player = True
+
+
             gamestate.waiting_for_player = False
             gamestate.getValues()
             gamestate.player2 = session["username"]
             #print(f"setting {gamestate.player2} to player 2")
 
             gamestate.game_started = True
+
+            game[0] = gamestate
 
             response_data = gamestate.to_dict()
 
@@ -193,17 +262,17 @@ def create_game_ai():
 
 @socketio.on("place_card")
 def handle_place_card(data):
-    #print("recieved place_card")
     hand_index = data["hand_index"]
     caravan_index = data["caravan_index"]
     game_id = data['game_id']
     #print(game_id)
 
     for game in active_games:
+        print(active_games)
         if game[1] == game_id:
             gamestate = game[0]
         else:
-            #print("game not found in active_games")
+            print("game not found in active_games")
             return
 
     if not gamestate:
@@ -230,12 +299,15 @@ def handle_place_card(data):
         if gamestate.player1 == session["username"]:
             player = "1"
             #print(f"setting player to 1")
+            if hand_index > 7:
+                return
 
             
         elif gamestate.player2 == session["username"]:
             #print(f"setting player to 2")
             player = "2"
             hand_index -= 8
+
 
     # PLAYER 1 VARS
     if player == "1":
@@ -244,7 +316,7 @@ def handle_place_card(data):
         placed_card_value1 = gamestate._hand1.getHand()[hand_index].value()
         top_card_suit1 = gamestate._board._caravans1[caravan_index][-1].getSuit() if gamestate._board._caravans1[caravan_index] else None        
         placed_card_suit1 = gamestate._hand1.getHand()[hand_index].getSuit()
-        #print(f"direction1: {direction1}, top_card_value1: {top_card_value1}, placed_card_value1: {placed_card_value1}, top_card_suit1: {top_card_suit1}, placed_card_suit1: {placed_card_suit1}")
+        print(f"direction1: {direction1}, top_card_value1: {top_card_value1}, placed_card_value1: {placed_card_value1}, top_card_suit1: {top_card_suit1}, placed_card_suit1: {placed_card_suit1}")
         placed_card_value2 = None
     # PLAYER 2 VARS
     if player == "2":
@@ -254,11 +326,11 @@ def handle_place_card(data):
         placed_card_value2 = gamestate._hand2.getHand()[hand_index].value() 
         top_card_suit2 = gamestate._board._caravans2[caravan_index][-1].getSuit() if gamestate._board._caravans2[caravan_index] else None
         placed_card_suit2 = gamestate._hand2.getHand()[hand_index].getSuit()
-        #print(f"direction2: {direction2}, top_card_value2: {top_card_value2}, placed_card_value2: {placed_card_value2}, top_card_suit2: {top_card_suit2}, placed_card_suit2: {placed_card_suit2}")
+        print(f"direction2: {direction2}, top_card_value2: {top_card_value2}, placed_card_value2: {placed_card_value2}, top_card_suit2: {top_card_suit2}, placed_card_suit2: {placed_card_suit2}")
         placed_card_value1 = None
-    gamestate.handleDirectionsSuits()
 
-
+        
+    
     if player == gamestate.getTurn() and gamestate.numturns > 5 and (placed_card_value1 != 11) and (placed_card_value1 != 13) and (placed_card_value2 != 11) and (placed_card_value2 != 13) and (placed_card_value1 != 12) and (placed_card_value2 != 12):
     
         # Make sure the index is valid
@@ -266,10 +338,6 @@ def handle_place_card(data):
             valid_move = False
             # If no direction is set yet
             if direction1 is None:
-                valid_move = True
-
-            # PICTURE CARDS DONT NEED TO FOLLOW SUIT OR SEQUENCE
-            if placed_card_value1 > 10:
                 valid_move = True
 
             # CANNOT PLAY CARD OF SAME VALUE ATOP ITSELF (NOT COUNTING PICTURE CARDS)
@@ -283,17 +351,6 @@ def handle_place_card(data):
                 valid_move = True
                 
             if valid_move:
-                #print(f"valid move player: {player}")
-
-                # FLIP FOR QUEEN
-                if placed_card_value1 == 12:
-                    # Get the queen's suit to update the caravan suit
-                    queen_suit = gamestate._hand1.getHand()[hand_index].getSuit()
-                    # Update the suit for the caravan
-                    gamestate._caravans1_suit[caravan_index] = queen_suit
-                    # Flip the direction
-                    gamestate.flipOrder(caravan_index)
-
                 gamestate.placeCard(player, hand_index, caravan_index)
                 gamestate.flipTurn()
                 gamestate._hand1.replenishHand()
@@ -303,8 +360,6 @@ def handle_place_card(data):
             
             # If no direction is set yet
             if not direction2:
-                valid_move = True
-            elif placed_card_value2 > 10:
                 valid_move = True
             # CANNOT PLAY CARD OF SAME VALUE ATOP ITSELF (NOT COUNTING PICTURE CARDS)
             elif placed_card_value2 == top_card_value2:
@@ -347,6 +402,11 @@ def handle_place_card(data):
         elif game_winner == "p2":
             gamestate.win_status = f"Player 2 Wins!"
     
+
+    gamestate.handleDirectionsSuits()
+    print("dirs suits after place normal card")
+    print(f"cars1 dir: {gamestate._caravans1_direction}")
+    print(f"cars2 dir: {gamestate._caravans2_direction}")
 
     gamestate.getValues()
 
@@ -458,6 +518,8 @@ def place_side_card(data):
             player = "2"
             hand_index -= 8
         
+    if player != gamestate.getTurn():
+        return
 
     placed_card_value = gamestate._hand1.getHand()[hand_index].value() if player == "1" else gamestate._hand2.getHand()[hand_index].value()
 
@@ -515,10 +577,16 @@ def place_side_card(data):
             gamestate._hand2.removeCard(hand_index)
             gamestate._hand2.replenishHand()
 
+        gamestate.flipTurn()
+
     else: 
         print("not a K or J, rejecting...")
 
-        gamestate.flipTurn()
+    
+    gamestate.handleDirectionsSuits()
+    print("dirs suits after place side card")
+    print(f"cars1 dir: {gamestate._caravans1_direction}")
+    print(f"cars2 dir: {gamestate._caravans2_direction}")
 
     #print("CARAVAN BONUSES", gamestate.bonus_cards)
 
@@ -598,8 +666,6 @@ def make_ai_move(data):
         direction2 = gamestate._caravans2_direction[caravan_index][0] if (gamestate._caravans2_direction[caravan_index] and isinstance(gamestate._caravans2_direction[caravan_index], list)) else None
         top_card_suit2 = gamestate._board._caravans2[caravan_index][-1].getSuit() if gamestate._board._caravans2[caravan_index] else None
         placed_card_suit2 = gamestate._hand2.getHand()[hand_index].getSuit()
-
-        gamestate.handleDirectionsSuits()
 
         # HANDLE PLACING KINGS JACKS (AND QUEENS)
 
@@ -692,6 +758,10 @@ def make_ai_move(data):
                     gamestate.flipTurn()
                     valid_move = True
 
+    gamestate.handleDirectionsSuits()
+    print("dirs suits after place AI card")
+    print(f"cars1 dir: {gamestate._caravans1_direction}")
+    print(f"cars2 dir: {gamestate._caravans2_direction}")
     
     # Check for win after card placement
     game_winner = gamestate.checkForWin()

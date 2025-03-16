@@ -35,6 +35,10 @@ a {
     text-decoration: none;  /* Removes the underline */
 }
 
+#deck-options {
+    width: 200px; /* Adjust this value to fit your needs */
+}
+
 .hand1, .hand2 {
     display: flex;
     flex-wrap: wrap;

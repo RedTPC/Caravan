@@ -2,13 +2,12 @@ If playing a number card that matches suit but contradicts the numerical sequenc
 add different ai characters
 revamp css completely
 add different backgrounds
-add custom decks
 add cap gambling
 
-you can add queens on the enemies cards
-jacks disappear with the card and any face cards attatched
-caravans need to be able to be unsold
-higher values need to win 
 putting a king on a king makes a 40
 
-AI placing queens is broken
+issues with the order being set and then having a jack remove stuff
+
+better validation for custom decks
+
+custom names for custom decks

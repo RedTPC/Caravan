@@ -7,11 +7,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Caravan</title>
 
-    <!-- Socket.IO client -->
-    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
-    <!-- Link to the external JavaScript -->
-    <script src="static/javascript/app.js"></script>
-
 </head>
 
     <h1>Caravan!</h1>
@@ -40,6 +35,11 @@
 
     <button id="createGameButton">Create Game</button>
 
+    <label for="deck-options">Choose a Deck:</label>
+    <select id="deck-options"></select>
+
+    <button id="useDeck">Use Deck</button>
+
     <button id="createAIGameButton">Play VS. AI</button>
 
     <button id="createMultiplayerButton">Create Room</button>
@@ -52,5 +52,10 @@
 {% block content %}
 
 {% endblock %}
+
+    <!-- Socket.IO client -->
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <!-- Link to the external JavaScript -->
+    <script src="static/javascript/app.js"></script>
 
 </html>
