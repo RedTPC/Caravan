@@ -1,54 +1,13 @@
 {% extends "base.html" %}
 
 {% block content %}
-
-<body>
-    <div id="winnerMessage" style="display: none; font-size: 24px; color: green; text-align: center; margin-top: 20px;">
+<div id="options-menu-container">
+    <button id="createAIGameButton">Play VS. AI</button>
+    <button id="createMultiplayerButton">Create Room</button>
+    
+    <div class="join-container">
+        <input type="text" id="gameIdInput" placeholder="Enter Game ID">
+        <button id="joinGameButton">Join Room</button>
     </div>
-
-    <div id="gameContainer" style="display: none;">
-        <div class="hand1">
-            <h2>Hand 1</h2>
-            <!-- Cards will be added dynamically -->
-        </div>
-
-        <div class="board">
-            <div class="caravans1">
-                <div class="caravan" data-index="0"></div>
-                <div class="caravan-value" data-index="0"></div>
-                <div class="caravan" data-index="1"></div>
-                <div class="caravan-value" data-index="1"></div>
-                <div class="caravan" data-index="2"></div>
-                <div class="caravan-value" data-index="2"></div>
-
-            </div>
-            <div class="caravans2">
-                <div class="caravan" data-index="3"></div>
-                <div class="caravan-value" data-index="3"></div>
-                <div class="caravan" data-index="4"></div>
-                <div class="caravan-value" data-index="4"></div>
-                <div class="caravan" data-index="5"></div>
-                <div class="caravan-value" data-index="5"></div>
-
-            </div>
-
-            <div class="discard-areas">
-                <div class="discard-pile" id="discard1">
-                    <h3>Discard Pile 1</h3>
-                    <div class="discard-zone" data-player="1"></div>
-                </div>
-                <div class="discard-pile" id="discard2">
-                    <h3>Discard Pile 2</h3>
-                    <div class="discard-zone" data-player="2"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="hand2">
-            <h2>Hand 2</h2>
-            <!-- Cards will be added dynamically -->
-        </div>
-    </div>
-</body>
-
+</div>
 {% endblock %}

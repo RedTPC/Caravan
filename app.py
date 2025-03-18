@@ -1,6 +1,6 @@
 from flask import Flask, render_template, url_for, redirect, session, request
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room
 from forms import LoginForm, RegisterForm
 from functools import wraps
 from caravan import Game
@@ -8,6 +8,7 @@ from utils import loadCustomDeck, saveCustomDeck
 import random
 import sqlite3
 import json
+import time
 
 
 app = Flask(__name__)
@@ -16,6 +17,10 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 gamestate = None
 active_games = [] # [gamestate, game_id, gametype]
 
+# @app.errorhandler(Exception)
+# def handle_exception(e):
+#     print(f"Unhandled Exception: {e}")  
+#     return render_template("index.html", gamestate=gamestate)
 
 @app.route("/")
 def index():
@@ -138,8 +143,11 @@ def handle_selection(deck):
 
 @socketio.on("create_game")
 def create_game():
+    
+    print("create game called")
+
     # load custom deck
-    if session["preferred_deck"] is not None:
+    if "preferred_deck" in session:
         print(session)
         custom_deck1 = loadCustomDeck(session['username'], session['preferred_deck'])
         custom_deck2 = loadCustomDeck(session['username'], session['preferred_deck'])
@@ -148,11 +156,10 @@ def create_game():
         print(custom_deck2)
 
     else:
-        custom_deck2, custom_deck1 = False
+        custom_deck2 = False
+        custom_deck1 = False
 
     gamestate = Game(custom_deck1, custom_deck2)
-
-
     gamestate.startGame()   
     gamestate.game_started = True
     gamestate.gametype = "singleplayer"
@@ -161,75 +168,72 @@ def create_game():
     active_games.append([gamestate, game_id])  
     gamestate.getValues()
 
+    # Add this line to send the initial game state
+    room = game_id
+    join_room(room)
     response_data = gamestate.to_dict()
-    print("created game")
-    emit("game_update", response_data, broadcast=True)
+    emit("game_update", response_data, room=room)
+    
+    # Then redirect
+    emit("redirect", {"url": f"/game/{game_id}"})
 
 @login_required
 @socketio.on("create_multiplayer_game")
 def create_multiplayer_game():
     game_id = ''.join([str(random.randint(0, 9)) for i in range(5)])
-
-    game_info = [True, session["username"]] #waiting_for_player, player1 username, 
-
+    game_info = [True, session["username"], None]  # waiting_for_player, player1 username, player2 username
+    
     gamestate = None
     active_games.append([gamestate, game_id, game_info])
-
-    #print("making a room #", game_id)
+    
+    # Join this socket to the game room
+    room = game_id
+    join_room(room)
+    
+    # Redirect the client
     emit("redirect", {"url": f"/game/{game_id}"})
 
 @login_required
 @socketio.on("join_multiplayer_game")
 def join_multiplayer_game(data):
+    game_id = data['game_id']
+    room = game_id
+    
     for game in active_games:
-        game_id = data['game_id']
         if game[1] == game_id and game[2][0] == True:
-
-            game[2][2] == session["username"]
-
-            # instantiate the game here
-            # load custom deck
-            # if session["preferred_deck"] is not None:
-            #     print(session)
-            #     custom_deck1 = loadCustomDeck(game[1][1], session['preferred_deck'])
-            #     custom_deck2 = loadCustomDeck(game[1][2], session['preferred_deck'])
-
-            #     print(custom_deck1)        
-            #     print(custom_deck2)
+            # Join this socket to the game room
+            join_room(room)
             
-            # if session[""]
-
-            # else:
-            #     custom_deck2, custom_deck1 = False
-
-            custom_deck1, custom_deck2 = False
-
+            game[2][2] = session["username"]  # Set player2 username
+            
+            # Initialize game with both players
+            custom_deck1, custom_deck2 = False, False
+            
+            # Check if players have preferred decks
+            # (This part could be improved depending on your exact implementation)
+            
             gamestate = Game(custom_deck1, custom_deck2)
-
             gamestate.startGame()
-
-            gamestate.player1 = session["username"]
+            gamestate.player1 = game[2][1]  # Get player1 from game_info
             gamestate.player2 = session["username"]
-            gamestate.game_started = False
+            gamestate.game_started = True
             gamestate.gametype = "multiplayer"
-            gamestate.getValues()
             gamestate.game_id = game_id
-            gamestate.waiting_for_player = True
-
-
             gamestate.waiting_for_player = False
             gamestate.getValues()
-            gamestate.player2 = session["username"]
-            #print(f"setting {gamestate.player2} to player 2")
-
-            gamestate.game_started = True
-
+            
             game[0] = gamestate
-
+            
+            # Notify all clients in the room about the game update
             response_data = gamestate.to_dict()
-
+            emit("game_update", response_data, room=room, broadcast=True)
+            
+            # Redirect the client
             emit("redirect", {"url": f"/game/{game_id}"})
-            emit("game_update", response_data, broadcast=True)
+            return
+            
+    # Game not found or already full
+    emit("game_error", {"message": "Game not found or already full"})
 
 @app.route("/game/<game_id>")
 def game_page(game_id):
@@ -237,15 +241,49 @@ def game_page(game_id):
     for game in active_games:
         if game[1] == game_id:
             gamestate = game[0]
-            return render_template("multiplayer.html", game_id=game_id, gamestate=gamestate)
             
+            if gamestate and gamestate.gametype == "multiplayer":
+                return render_template("multiplayer.html", game_id=game_id, gamestate=gamestate)
+            elif gamestate and gamestate.gametype == "singleplayer":
+                return render_template("singleplayer.html", game_id=game_id, gamestate=gamestate)
+            elif not gamestate:
+                # This is for waiting in multiplayer lobby
+                return render_template("waiting_room.html", game_id=game_id)
+                
     # Game not found, redirect to index
     return redirect(url_for("index"))
 
+@socketio.on('join_game_room')
+def on_join_game_room(data):
+    game_id = data['game_id']
+    room = game_id
+    join_room(room)  # You'll need to add "from flask_socketio import join_room" at the top
+    
+    # Find the game and send its current state
+    for game in active_games:
+        if game[1] == game_id:
+            gamestate = game[0]
+            if gamestate:
+                response_data = gamestate.to_dict()
+                emit("game_update", response_data, room=room)
 
 @socketio.on("create_game_ai")
 def create_game_ai():
-    gamestate = Game()
+
+    # load custom deck
+    if "preferred_deck" in session:
+        print(session)
+        custom_deck1 = loadCustomDeck(session['username'], session['preferred_deck'])
+        custom_deck2 = loadCustomDeck(session['username'], session['preferred_deck'])
+
+        print(custom_deck1)        
+        print(custom_deck2)
+
+    else:
+        custom_deck2 = False
+        custom_deck1 = False
+
+    gamestate = Game(custom_deck1, custom_deck2)
     gamestate.startGame()
     gamestate.game_started = True
     gamestate.gametype = "AI"
@@ -278,6 +316,10 @@ def handle_place_card(data):
     if not gamestate:
         #print("no gamestate, returning..")
         return
+    
+    if hand_index is None or caravan_index is None:
+        return
+    
 
     #print(gamestate)
 
@@ -307,8 +349,7 @@ def handle_place_card(data):
             #print(f"setting player to 2")
             player = "2"
             hand_index -= 8
-
-
+    
     # PLAYER 1 VARS
     if player == "1":
         direction1 = gamestate._caravans1_direction[caravan_index][0] if (gamestate._caravans1_direction[caravan_index] and isinstance(gamestate._caravans1_direction[caravan_index], list)) else None
@@ -493,6 +534,9 @@ def place_side_card(data):
     caravan_card_index = data["caravan_card_index"]
     caravan_index = data["caravan_index"]
 
+    if hand_index is None or caravan_index is None or caravan_card_index is None:
+        return
+
     # Determine player based on hand index
     if gamestate.gametype == "singleplayer" or gamestate.gametype == "AI":
         if hand_index < 8:
@@ -517,9 +561,10 @@ def place_side_card(data):
             #print(f"setting player to 2")
             player = "2"
             hand_index -= 8
-        
+    
     if player != gamestate.getTurn():
         return
+
 
     placed_card_value = gamestate._hand1.getHand()[hand_index].value() if player == "1" else gamestate._hand2.getHand()[hand_index].value()
 
@@ -539,6 +584,12 @@ def place_side_card(data):
         
          # FLIP FOR QUEEN
         if placed_card_value == 12:
+
+            if bonus_caravan_index > 2:
+                queen_flip_player = "2"
+            else:
+                queen_flip_player = "1"
+
             # return if top card is not the the target card
             if caravan_card_index != len(target_caravan)-1:
                     return
@@ -548,12 +599,12 @@ def place_side_card(data):
                 # Update the suit for the caravan
                 gamestate._caravans1_suit[target_caravan_index] = queen_suit
                         # Flip the direction
-                gamestate.flipOrder(target_caravan_index)
+                gamestate.flipOrder(target_caravan_index, queen_flip_player)
 
             else: #p2
                 queen_suit = gamestate._hand2.getHand()[hand_index].getSuit()
                 gamestate._caravans2_suit[target_caravan_index] = queen_suit
-                gamestate.flipOrder(target_caravan_index)
+                gamestate.flipOrder(target_caravan_index, queen_flip_player)
 
         elif placed_card_value == 11:
             if caravan_index < 3:
@@ -684,6 +735,11 @@ def make_ai_move(data):
 
                 # FLIP FOR QUEEN
                 if placed_card_value2 == 12:
+
+                    if bonus_caravan_index > 2:
+                        queen_flip_player = "2"
+                    else:
+                        queen_flip_player = "1"
                     #return if queen is not placed ontop card
                     if caravan_card_index != len(target_caravan)-1:
                         continue
@@ -693,7 +749,7 @@ def make_ai_move(data):
                     
                     queen_suit = gamestate._hand2.getHand()[hand_index].getSuit()
                     gamestate._caravans2_suit[target_caravan_index] = queen_suit
-                    gamestate.flipOrder(target_caravan_index)
+                    gamestate.flipOrder(target_caravan_index, queen_flip_player)
 
                 # REMOVE FOR JACKS
                 elif placed_card_value2 == 11:
@@ -740,8 +796,6 @@ def make_ai_move(data):
                 valid_move = True
                     
             if valid_move:
-                # Flip the direction
-                gamestate.flipOrder(caravan_index)
                 gamestate.placeCard(player, hand_index, caravan_index)
                 gamestate.flipTurn()
                 gamestate._hand2.replenishHand()
@@ -784,6 +838,8 @@ def make_ai_move(data):
         #print("Sending game_update:", response_data)
         
         # Send updated game state to all clients
+
+        time.sleep(2)
         emit("game_update", response_data, broadcast=True)
         
     except Exception as e:

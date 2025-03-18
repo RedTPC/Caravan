@@ -6,36 +6,57 @@ document.addEventListener('DOMContentLoaded', function () {
         window.location.href = data.url;  // Redirects to Flask route
     });
 
+    if (window.location.pathname.startsWith('/game/')) {
+        // Extract game_id from URL
+        const game_id = window.location.pathname.split('/').pop();
+        
+        // Join the game room and request initial state
+        socket.emit('join_game_room', {game_id: game_id});
+    }
+
     // Start & Join Game
-    document.getElementById("createGameButton").addEventListener("click", () => {
-        console.log("Create game button clicked");
-        console.log("Socket status:", socket);
-        socket.emit("create_game");
-    });
+    const create_game_button = document.getElementById("createGameButton")
+    if (create_game_button) {
+        create_game_button.addEventListener("click", () => {
+            console.log("Create game button clicked");
+            console.log("Socket status:", socket);
+            socket.emit("create_game");
+        });
+    }
 
-        // Start & Join Game
-    document.getElementById("createAIGameButton").addEventListener("click", () => {
-        console.log("Create AI game button clicked");
-        socket.emit("create_game_ai");
-    });
+    // Start & Join Game
+    const create_AI_game_button = document.getElementById("createAIGameButton")
+    if (create_AI_game_button) {
+        create_AI_game_button.addEventListener("click", () => {
+            console.log("Create AI game button clicked");
+            socket.emit("create_game_ai");
+        });
+    }
 
-    document.getElementById("createMultiplayerButton").addEventListener("click", () => {
-        console.log("Create multiplayer game button clicked");
-        socket.emit("create_multiplayer_game");
-    });
+    const create_multiplayer_game_button = document.getElementById("createMultiplayerButton")
+    if (create_multiplayer_game_button) {
+        document.getElementById("createMultiplayerButton").addEventListener("click", () => {
+            console.log("Create multiplayer game button clicked");
+            socket.emit("create_multiplayer_game");
+        });
+    }
 
-    document.getElementById("joinGameButton").addEventListener("click", () => {
-        const gameId = document.getElementById("gameIdInput").value.trim();
-        if (gameId) {
-            console.log("Join game button clicked with ID:", gameId);
-            socket.emit("join_multiplayer_game", {game_id: gameId});
-        }
-    });
+    const joinGameButton = document.getElementById("joinGameButton")
+    if (joinGameButton) {
+        joinGameButton.addEventListener("click", () => {
+            const gameId = document.getElementById("gameIdInput").value.trim();
+            if (gameId) {
+                console.log("Join game button clicked with ID:", gameId);
+                socket.emit("join_multiplayer_game", { game_id: gameId });
+            }
+        });
+    }
 
     document.getElementById("useDeck").addEventListener("click", () => {
         console.log("Use deck button clicked");
-        sendSelection()    
+        sendSelection()
     });
+
 
     // DECK BUILDER STUFF
 
@@ -43,14 +64,14 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener("click", (event) => {
         if (event.target && event.target.id === "saveDeckButton") {
             console.log("Save Deck Button Clicked");
-    
+
             let selectedCards = [];
             document.querySelectorAll(".deck-card-slot.filled").forEach(slot => {
                 selectedCards.push(slot.dataset.card);
             });
-    
+
             console.log("Selected Cards:", selectedCards);
-    
+
             socket.emit("save_deck", { selectedCards: selectedCards });
         }
     });
@@ -61,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function () {
     ///////////////////////////
 
     // deck selector
-    
+
     requestDropdownOptions();
 
 
@@ -69,17 +90,17 @@ document.addEventListener('DOMContentLoaded', function () {
     function sleep(milliseconds) {
         var start = new Date().getTime();
         for (var i = 0; i < 1e7; i++) {
-          if ((new Date().getTime() - start) > milliseconds){
-            break;
-          }
+            if ((new Date().getTime() - start) > milliseconds) {
+                break;
+            }
         }
-      }
+    }
 
     // Listen for board updates
     socket.on("game_update", (data) => {
         console.log("Game state updated", data);
 
-        
+
         // Get the game_id from the URL
         const urlParams = new URLSearchParams(window.location.search);
         const gameId = urlParams.get('game_id');
@@ -91,11 +112,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const player2 = data.player2;
             document.getElementById("player1").textContent = player1;
             document.getElementById("player2").textContent = player2 || "Waiting for Player 2";
+
         }
 
         console.log("game id: ", data.game_id)
         let game_id = data.game_id
-        
+
+
         // Show the game container
         document.getElementById("gameContainer").style.display = "block";
 
@@ -148,17 +171,17 @@ document.addEventListener('DOMContentLoaded', function () {
             setTimeout(() => {
                 console.log("AI's turn - making move");
                 socket.emit("make_ai_move", game_id);
-            }, 1000); 
+            }, 1000);
 
             console.log("making ai move")
             socket.emit("make_ai_move", game_id);
-        }   else {console.log("not ai move")}
+        } else { console.log("not ai move") }
     });
 
     function updateHands(handData, handClass) {
         const handElement = document.querySelector(`.${handClass}`);
         // Keep the heading
-        handElement.innerHTML = `<h2>${handClass.charAt(0).toUpperCase() + handClass.slice(1)}</h2>`;
+        handElement.innerHTML = "";
 
         handData.forEach((card, index) => {
             const cardElement = document.createElement("div");
@@ -175,17 +198,17 @@ document.addEventListener('DOMContentLoaded', function () {
         boardData.caravans1.forEach((caravan, index) => {
             const caravanElement = document.querySelector(`.caravans1 .caravan[data-index="${index}"]`);
             caravanElement.innerHTML = "";
-            caravan.forEach((card, cardIndex) => {  
+            caravan.forEach((card, cardIndex) => {
                 const cardElement = document.createElement("div");
                 cardElement.classList.add("card", "small");
                 cardElement.textContent = card;
                 caravanElement.appendChild(cardElement);
-    
+
                 // Check for bonus card at this position
                 // addBonusCard(boardData.bonus_cards, index, cardIndex, caravanElement);
             });
         });
-    
+
         // Update player 2's caravans
         boardData.caravans2.forEach((caravan, index) => {
             const caravanElement = document.querySelector(`.caravans2 .caravan[data-index="${index + 3}"]`);
@@ -195,13 +218,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 cardElement.classList.add("card", "small");
                 cardElement.textContent = card;
                 caravanElement.appendChild(cardElement);
-    
+
                 // Check for bonus card at this position
                 // addBonusCard(boardData.bonus_cards, index + 3, cardIndex, caravanElement);
             });
         });
     }
-    
+
 
     function updateCaravanStatus(statusArray) {
         if (!statusArray) return;
@@ -253,7 +276,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('.caravan .card').forEach(card => {
             card.addEventListener('click', function () { // Use function() to keep `this` context
                 console.log("Card clicked:", card.textContent);
-    
+
                 // Find the caravan element (parent of the clicked card)
                 const caravanElement = card.closest('.caravan');
                 const caravanIndex = parseInt(caravanElement.dataset.index);
@@ -261,28 +284,28 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Adjust caravanIndex for player 2's caravans (index >= 3)
                 const isPlayer2 = caravanIndex >= 3;
                 const adjustedIndex = isPlayer2 ? caravanIndex - 3 : caravanIndex;
-    
+
                 // Find the index of the clicked card within the caravan
                 const caravanCards = Array.from(caravanElement.querySelectorAll('.card')); // Get all cards in the caravan
                 const caravanCardIndex = caravanCards.indexOf(card); // Find the clicked card's index
-    
+
                 console.log(`Placing card from hand index ${selectedCard} to caravan ${adjustedIndex}, card slot ${caravanCardIndex}`);
-    
+
                 socket.emit("place_side_card", {
                     hand_index: selectedCard,
                     caravan_index: caravanIndex,
                     caravan_card_index: caravanCardIndex,
                     game_id: game_id
                 });
-    
+
                 // Reset selection
                 selectedCard = null;
                 document.querySelectorAll(".card").forEach(c => c.classList.remove("selected"));
             });
         });
     }
-    
-    
+
+
 
     function attachCaravanListeners(game_id) {
         document.querySelectorAll(".caravan").forEach(slot => {
@@ -339,7 +362,7 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error("Invalid caravan values received:", caravan_values);
             return;
         }
-        
+
         for (let i = 0; i < 3; i++) {
             const valueElement = document.querySelector(`.caravan-value[data-index="${i}"]`);
             if (valueElement) {
@@ -347,7 +370,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 valueElement.classList.toggle('winning-range', caravan_values[i] >= 21 && caravan_values[i] <= 26);
             }
         }
-    
+
         for (let i = 3; i < 6; i++) {
             const valueElement = document.querySelector(`.caravan-value[data-index="${i}"]`);
             if (valueElement) {
@@ -356,7 +379,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     }
-    
+
 
     function attachDiscardListeners(game_id) {
         document.querySelectorAll('.discard-zone').forEach(zone => {
@@ -396,7 +419,7 @@ document.addEventListener('DOMContentLoaded', function () {
     //             bonusCardElement.classList.add("card", "bonus-card");
     //             bonusCardElement.textContent = bonusCard;
     //             bonusCardElement.style.pointerEvents = "none"; // Make non-interactable
-    
+
     //             // Append next to the main card
     //             caravanElement.appendChild(bonusCardElement);
     //         }
@@ -406,13 +429,13 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateBonusCards(bonusCards) {
         // First, clear all existing bonus cards
         document.querySelectorAll('.bonus-card').forEach(card => card.remove());
-        
+
         // If bonusCards is null or not an array, exit
         if (!bonusCards || !Array.isArray(bonusCards)) {
             console.warn("No bonus cards or invalid format:", bonusCards);
             return;
         }
-    
+
         // Loop through each bonus card data array
         bonusCards.forEach((bonusCard) => {
             // Check if the bonus card is in the expected array format [value, caravan_index, position_index]
@@ -420,23 +443,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.warn("Invalid bonus card data:", bonusCard);
                 return;
             }
-    
+
             const [cardValue, caravanIndex, positionIndex] = bonusCard;
-            
+
             // Determine which caravan element to target
             const caravanElement = document.querySelector(`.caravan[data-index="${caravanIndex}"]`);
             if (!caravanElement) {
                 console.error(`Caravan element not found for index: ${caravanIndex}`);
                 return;
             }
-    
+
             // Get all regular cards in this caravan
             const cardElements = caravanElement.querySelectorAll(".card:not(.bonus-card)");
-            
+
             // Find the target card
             if (positionIndex < cardElements.length) {
                 const targetCard = cardElements[positionIndex];
-                
+
                 // Create a container for the card and its bonus if it doesn't exist
                 let cardContainer = targetCard.parentElement;
                 if (!cardContainer.classList.contains('card-container')) {
@@ -447,12 +470,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     targetCard.parentNode.replaceChild(cardContainer, targetCard);
                     cardContainer.appendChild(targetCard);
                 }
-                
+
                 // Create the bonus card element
                 const bonusCardElement = document.createElement("div");
                 bonusCardElement.classList.add("bonus-card", "small");
                 bonusCardElement.textContent = cardValue;  // Use the card value from the array
-                
+
                 // Add the bonus card to the container
                 cardContainer.appendChild(bonusCardElement);
             }
@@ -502,21 +525,21 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function requestDropdownOptions() {
-            // Request dropdown options when the page loads
-            socket.emit("deck_request_options");
+        // Request dropdown options when the page loads
+        socket.emit("deck_request_options");
 
-            console.log("req dropdown options called")
+        console.log("req dropdown options called")
 
-            // Receive options from the server
-            socket.on("dropdown_options", function(options) {
+        // Receive options from the server
+        socket.on("dropdown_options", function (options) {
 
-                console.log(options)
+            console.log(options)
 
-                let dropdown = document.getElementById("deck-options");
+            let dropdown = document.getElementById("deck-options");
 
-                if (dropdown != null) {
+            if (dropdown != null) {
                 dropdown.innerHTML = ""
-                  // Clear existing options
+                // Clear existing options
 
                 options.forEach(option => {
                     let opt = document.createElement("option");
@@ -537,9 +560,21 @@ document.addEventListener('DOMContentLoaded', function () {
         socket.emit("deck_dropdown_selection", selectedValue);
     }
 
-    // // Listen for server response
-    // socket.on("send_deck_choice", function(data) {
-    //     console.log("Server Response:", data);
-    // });
+    // Function to update the game UI
+
+    function updateGameUI(gameData) {
+        // Implement your UI update logic here
+        // This will depend on your game's structure
+    }
+
+    // Example function to handle player actions
+    function playCard(cardId, position) {
+        socket.emit('player_action', {
+            game_id: gameId,
+            action: 'play_card',
+            card_id: cardId,
+            position: position
+        });
+    }
 
 });

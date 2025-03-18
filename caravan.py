@@ -201,9 +201,9 @@ class Game():
             self._turn = "1"
         #print(f"flipping turn to {self._turn}")
 
-    def flipOrder(self, caravan_index):
+    def flipOrder(self, caravan_index, player):
         print(f"flip order called on caravan {caravan_index}")
-        if self._turn == "1":
+        if player == "1":
 
             # Check if direction is None or not a list
             if self._caravans1_direction[caravan_index] is None or not isinstance(self._caravans1_direction[caravan_index], list):
@@ -214,7 +214,7 @@ class Game():
                 self._caravans1_direction[caravan_index][0] = "DESC"
             else:
                 self._caravans1_direction[caravan_index][0] = "ASC"
-        elif self._turn == "2":
+        elif player == "2":
             # Check if direction is None or not a list
             if self._caravans2_direction[caravan_index] is None or not isinstance(self._caravans2_direction[caravan_index], list):
                 # Default to descending if no direction set yet
@@ -223,6 +223,10 @@ class Game():
                 self._caravans2_direction[caravan_index][0] = "DESC"
             else:
                 self._caravans2_direction[caravan_index][0] = "ASC"
+
+            print("caravans after flip order")
+            print(self._caravans1_direction)
+            print(self._caravans2_direction)
 
     def placeCard(self, player, hand_index, caravan_index):
         if player == "1":
@@ -369,13 +373,12 @@ class Game():
         bonus_queens = []
         bonus_cards = self.bonus_cards
         for card in bonus_cards:
-            if 12 == card[0]:
-                if card[1] > 2:
-                    card[1] -= 3
-                    if len(card) < 4:
+            if card[0] == 12:
+                if len(card) < 4:
+                    if card[1] > 2:
+                        card[1] -= 3
                         card.append("p2")
-                else:
-                    if len(card) < 4:
+                    else:
                         card.append("p1")
                 bonus_queens.append(card) # 4th col = player
 

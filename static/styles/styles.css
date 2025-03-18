@@ -1,13 +1,75 @@
+@font-face {
+    font-family: "FNVFont";
+    src: url('../fonts/Gothic 821 Condensed BT.ttf') format('truetype'); /* Path to your font */
+    font-weight: normal;
+    font-style: normal;
+}
+
+
+
+div {
+    align-self: center;
+}
+
+.deck-scroll-container, .deck-container {
+    align-self: center;
+}
+
+body, html {
+    width: 100%;
+    margin: 0; /* Remove default margin */
+}
+
+header {
+    background-color: rgba(154, 101, 97, 0.8);
+    width: 100%;
+    position: fixed; /* Fixes the header to the top of the screen */
+    top: 0; /* Positions it at the top */
+}
+
+#options-menu-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 30em;
+
+}
+
+
+#login, #register {
+    position: fixed; /* Fixes the button at a specific position on the screen */
+    top: 0; /* Positions it at the top */
+    right: 0; /* Positions it at the right */
+    z-index: 1000; /* Ensure it stays above other content */
+}
+
+#register {
+    margin-right: 8em;
+}
+
 body {
-    font-family: Arial, sans-serif;
-    max-width: 1200px;
+    font-family: "FNVFont", sans-serif;
+    /* max-width: 1200px; */
     margin: 0 auto;
-    padding: 20px;
+    /* padding: 20px; */
+    background-image: url("../images/wooden_table.jpeg");
+    background-size: cover;
+    background-position: center top; 
+    background-repeat: no-repeat; 
+    color: white;
+}
+
+body :not(header) {
+    max-width: 1200px;
+    align-content: center;
+    
 }
 
 h1 {
-    text-align: center;
-    color: #333;
+    text-align: left;
+    color: white;
+    font-size: 6em;
+    margin-left: 0.5em;
 }
 
 button {
@@ -140,8 +202,8 @@ a {
     border: 2px dashed #888;
     border-radius: 8px;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    justify-content: right;
+    align-items: right;
     margin: 10px auto;
     cursor: pointer;
     background-color: rgba(200, 200, 200, 0.3);
@@ -153,8 +215,8 @@ a {
     border: 2px dashed #888;
     border-radius: 8px;
     display: flex;
-    /* justify-content: center;
-    align-items: center; */
+    justify-content: center;
+    align-items: center;
     margin: 10px auto;
     cursor: pointer;
     background-color: rgba(200, 200, 200, 0.3);
@@ -182,6 +244,8 @@ a {
     max-width: 800px; /* Limit the visible width */
     border: 2px solid #ccc; /* Optional: for visibility */
     scroll-snap-type: x mandatory; /* Smooth scrolling to each card */
+    align-items: center;
+    align-self: center;
 }
 
 .deck-card-option {

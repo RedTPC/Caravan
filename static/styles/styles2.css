@@ -1,0 +1,443 @@
+@font-face {
+    font-family: "FNVFont";
+    src: url('../fonts/Gothic 821 Condensed BT.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+/* Global Reset and Base Styles */
+body, html {
+    width: 100%;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    font-family: "FNVFont", sans-serif;
+    color: white;
+}
+
+body {
+    background-image: url("../images/wooden_table.jpeg");
+    background-size: cover;
+    background-position: center top;
+    background-repeat: repeat-y;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Main content container - adjusted margin to ensure content appears below header */
+.content-container {
+    max-width: 1200px;
+    width: 100%;
+    margin-top: 120px; /* Increased space for the header */
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: calc(100vh - 300px); /* Make it take the full height minus the header */
+    flex: 1;
+}
+
+/* Header and Navigation */
+header {
+    background-color: rgba(154, 101, 97, 0.9);
+    width: 100%;
+    position: top;
+    left: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    height: 100px; /* Fixed height for header */
+}
+
+footer {
+    background-color: rgba(154, 101, 97, 0.9);
+    width: 100%;
+    z-index: 1000;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    position: relative;
+    bottom: 0;
+}
+
+nav {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 20px;
+}
+
+h1 {
+    text-align: left;
+    color: white;
+    font-size: 4em;
+    margin: 0;
+    flex-grow: 1;
+    padding-right: 2em;
+}
+
+h2 {
+    color: white;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    font-size: 2.5em;
+}
+
+.nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.deck-selector {
+    display: flex;
+    align-items: center;
+    margin-right: 15px;
+}
+
+label {
+    color: white;
+    margin-right: 10px;
+    font-size: 1.2em;
+}
+
+select {
+    padding: 8px;
+    border-radius: 4px;
+    border: none;
+    background-color: white;
+    font-family: inherit;
+}
+
+/* Buttons */
+button {
+    background-color: #4CAF50;
+    border: none;
+    color: white;
+    padding: 12px 25px;
+    text-align: center;
+    text-decoration: none;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-family: inherit;
+    transition: background-color 0.3s;
+    margin-left: 2em;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+/* Auth buttons */
+#login, #register, #logout, #decks {
+    margin: 0 5px;
+}
+
+/* Options Menu Container (for index.html) - positioned in the middle of the screen */
+#options-menu-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin-top: 15vh; /* Use viewport height for better vertical centering */
+    gap: 20px;
+    width: 100%;
+    max-width: 500px; /* Limit the width for better appearance */
+}
+
+#options-menu-container button {
+    width: 250px;
+    font-size: 1.2em;
+    padding: 15px 30px;
+}
+
+.join-container {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 20px;
+}
+
+#gameIdInput {
+    padding: 15px;
+    border-radius: 4px;
+    border: none;
+    width: 200px;
+    font-family: inherit;
+}
+
+/* Links */
+a {
+    text-decoration: none;
+}
+
+/* Login/Register Forms Styling */
+.auth-container {
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 8px;
+    padding: 30px;
+    margin-top: 15vh; /* Center vertically */
+    width: 100%;
+    max-width: 400px;
+}
+
+.auth-container h2 {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-size: 1.1em;
+}
+
+.form-group input {
+    padding: 12px;
+    border-radius: 4px;
+    border: none;
+    font-family: inherit;
+}
+
+.auth-submit {
+    margin-top: 20px;
+    padding: 15px;
+    font-size: 1.1em;
+}
+
+.auth-alt {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.auth-alt a {
+    color: #4CAF50;
+    text-decoration: underline;
+}
+
+/* Deck Building Page Styles */
+.deck-container {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 10px;
+    justify-content: center;
+    width: max-content;
+    margin: 0 auto;
+}
+
+.deck-scroll-container {
+    display: flex;
+    overflow-x: auto;
+    white-space: nowrap;
+    gap: 10px;
+    padding: 10px;
+    width: 100%;
+    max-width: 800px;
+    border: 2px solid #ccc;
+    scroll-snap-type: x mandatory;
+    margin: 20px auto;
+}
+
+.deck-card-slot, .deck-card-option {
+    width: 80px;
+    height: 120px;
+    border: 2px dashed #888;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(200, 200, 200, 0.3);
+    cursor: pointer;
+}
+
+.deck-card-option {
+    flex: 0 0 80px;
+    scroll-snap-align: center;
+}
+
+.deck-card-slot:hover, .deck-card-option:hover {
+    background-color: rgba(200, 200, 200, 0.5);
+}
+
+/* Game Elements (keeping these the same as requested) */
+.hand1, .hand2 {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 20px 0;
+    background-color: rgba(154, 101, 97, 0.9);
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.hand1 h2, .hand2 h2 {
+    width: 100%;
+    margin-top: 0;
+}
+
+.hand1 > *:not(h1), .hand2 > *:not(h1) {
+    font-size: 2em;
+}
+
+.board {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.caravans1, .caravans2 {
+    display: flex;
+    justify-content: space-around;
+}
+
+.caravan {
+    width: 150px;
+    min-height: 120px;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    padding: 30px;
+    background-color: rgba(154, 101, 97, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.caravan.won {
+    border-color: #4CAF50;
+    background-color: rgba(76, 175, 80, 0.1);
+}
+
+.caravan.lost {
+    border-color: #f44336;
+    background-color: rgba(244, 67, 54, 0.1);
+}
+
+.card {
+    width: 60px;
+    height: 90px;
+    background-color: white;
+    border: 1px solid #333;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.card.selected {
+    border: 3px solid #4CAF50;
+    transform: translateY(-5px);
+}
+
+.card.small {
+    width: 40px;
+    height: 60px;
+    font-size: 1.2em;
+    margin: 2px;
+    color:#333;
+}
+
+.card[data-card*="♥"], .card[data-card*="♦"], .card.small[data-card*="♠"], .card.small[data-card*="♣"] {
+    color: red;
+}
+
+.card[data-card*="♠"], .card[data-card*="♣"], .card.small[data-card*="♠"], .card.small[data-card*="♣"] {
+    color: black;
+}
+
+.discard-areas {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px 0;
+}
+
+.discard-pile {
+    text-align: center;
+    margin: 0 20px;
+}
+
+.discard-zone {
+    width: 80px;
+    height: 120px;
+    border: 2px dashed #888;
+    border-radius: 8px;
+    display: flex;
+    justify-content: right;
+    align-items: right;
+    margin: 10px auto;
+    cursor: pointer;
+    background-color: rgba(200, 200, 200, 0.3);
+}
+
+.discard-zone:hover {
+    background-color: rgba(200, 200, 200, 0.5);
+}
+
+.discard-zone .card {
+    margin: 0;
+}
+
+.caravan-value {
+    text-align: center;
+    font-weight: bold;
+    margin-top: 5px;
+}
+
+.card-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin: 5px 0;
+    width: 100%;
+    justify-content: center;
+}
+
+.bonus-card {
+    background-color: white;
+    border: 2px solid black;
+    width: 40px;
+    height: 60px;
+    margin-left: 5px;
+    opacity: 0.8;
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 0 5px rgba(0,0,0,0.2);
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.card-container .card {
+    z-index: 1;
+}
+
+/* Save button for decks page */
+#saveDeckButton {
+    display: block;
+    margin: 20px auto;
+    padding: 15px 40px;
+    font-size: 1.2em;
+}
+
+/* Game board container to ensure it's below the header and centered */
+.game-board {
+    margin-top: 20px;
+    width: 100%;
+}

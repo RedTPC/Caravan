@@ -1,9 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-<!-- <link rel="stylesheet" href="/styles/decks.css"> -->
-
-<body>
     <h2>Decks</h2>
     <div class="deck-container">
         {% for i in range(0, 30) %}
@@ -19,7 +16,4 @@
     </div>
 
     <button id="saveDeckButton">Save Deck</button>
-
-</body>
-
 {% endblock %}

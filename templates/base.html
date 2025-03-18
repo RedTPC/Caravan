@@ -3,59 +3,61 @@
 
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/styles2.css') }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Caravan</title>
-
 </head>
 
-    <h1>Caravan!</h1>
-    <nav>
-    <a href="{{ url_for('index') }}">
-        <button id="index">Home</button>
-    </a>
+<body>
+    <header>
+        <nav>
+            <a href="{{ url_for('index') }}">
+                <h1>Caravan</h1>
+            </a>
+            
+            <div class="nav-controls">
+                <div class="deck-selector">
+                    <label for="deck-options">Choose a Deck:</label>
+                    <select id="deck-options"></select>
+                    <button id="useDeck">Use Deck</button>
+                </div>
+                
+                <button id="createGameButton">Create Game</button>
+                
+                {% if 'username' not in session %}
+                <a href="{{ url_for('login') }}">
+                    <button id="login">Login</button>
+                </a>
+                <a href="{{ url_for('register') }}">
+                    <button id="register">Register</button>
+                </a>
+                {% endif %}
 
-    {% if 'username' not in session %}
-    <a href="{{ url_for('login') }}">
-        <button id="login">Login</button>
-    </a>
-    <a href="{{ url_for('register') }}">
-        <button id="register">Register</button>
-    </a>
-    {% endif %}
+                {% if 'username' in session %}
+                <a href="{{ url_for('decks') }}">
+                    <button id="decks">Decks</button>
+                </a>
+                <a href="{{ url_for('logout') }}">
+                    <button id="logout">Logout</button>
+                </a>
+                {% endif %}
+            </div>
+        </nav>
+    </header>
 
-    {% if 'username' in session %}
-    <a href="{{ url_for('logout') }}">
-        <button id="logout">Logout</button>
-    </a>
-    <a href="{{ url_for('decks') }}">
-        <button id="decks">Decks</button>
-    </a>
-    {% endif %}
+    <div class="content-container">
+        {% block content %}
+        {% endblock %}
+    </div>
 
-    <button id="createGameButton">Create Game</button>
-
-    <label for="deck-options">Choose a Deck:</label>
-    <select id="deck-options"></select>
-
-    <button id="useDeck">Use Deck</button>
-
-    <button id="createAIGameButton">Play VS. AI</button>
-
-    <button id="createMultiplayerButton">Create Room</button>
-
-    <input type="text" id="gameIdInput" placeholder="Enter Game ID">
-    <button id="joinGameButton">Join Room</button>
-</nav>
-
-
-{% block content %}
-
-{% endblock %}
+    <!-- <footer>
+        <p>© RedTPC All Rights Reserved.</p>
+    </footer> -->
 
     <!-- Socket.IO client -->
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <!-- Link to the external JavaScript -->
-    <script src="static/javascript/app.js"></script>
+    <script src="/static/javascript/app.js"></script>
 
+</body>
 </html>
