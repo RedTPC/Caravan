@@ -3,13 +3,13 @@ import json
 
 def loadCustomDeck(username, deck_number):
     # takes deck number as "deck1"
-    print(f"deck number: {deck_number}, username: {username}")
+    # print(f"deck number: {deck_number}, username: {username}")
     connection = sqlite3.connect("caravan.db")
     db = connection.cursor()
     db.execute(f"""SELECT {deck_number} FROM decks WHERE username = ?;""", (username,))
     deck_as_json = db.fetchone()
 
-    print(f"deck as json: {deck_as_json}")
+    # print(f"deck as json: {deck_as_json}")
 
     if deck_as_json is None:
         print(f"No deck found for: {username} at deck1")
@@ -17,7 +17,7 @@ def loadCustomDeck(username, deck_number):
     
     deck = json.loads(deck_as_json[0])
 
-    print("loadcustomdeck returning", deck)
+    # print("loadcustomdeck returning", deck)
     return deck
 
 def saveCustomDeck(username, deck):

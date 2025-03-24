@@ -10,9 +10,27 @@ document.addEventListener('DOMContentLoaded', function () {
         // Extract game_id from URL
         const game_id = window.location.pathname.split('/').pop();
         
+        // Store it globally so other functions can access it
+        window.gameId = game_id;
+        
+        console.log("joining game room req game state, gameid = ", game_id)
+
+        
         // Join the game room and request initial state
         socket.emit('join_game_room', {game_id: game_id});
+        
+        // Explicitly request game state after joining
+        socket.emit('request_game_state', {game_id: game_id});
+
+        // Add this to your waiting_room.html
+        socket.on('game_joined', function(data) {
+            if (data.game_id === game_id) {  // assuming you have currentGameId defined
+                window.location.href = '/game/' + data.game_id;
+            }
+});
     }
+
+
 
     // Start & Join Game
     const create_game_button = document.getElementById("createGameButton")
@@ -57,6 +75,14 @@ document.addEventListener('DOMContentLoaded', function () {
         sendSelection()
     });
 
+    const cancel_room_buttom = document.getElementById("cancel_room")
+    if (cancel_room_buttom && gameId) {
+        cancel_room_buttom.addEventListener("click", () => {
+            console.log("Cancel room button clicked");
+            socket.emit("cancel_room_buttom", { game_id: gameId });
+        });
+    }
+
 
     // DECK BUILDER STUFF
 
@@ -70,9 +96,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 selectedCards.push(slot.dataset.card);
             });
 
-            console.log("Selected Cards:", selectedCards);
+            if (selectedCards.length > 29) {
 
-            socket.emit("save_deck", { selectedCards: selectedCards });
+                console.log("Selected Cards:", selectedCards);
+
+                socket.emit("save_deck", { selectedCards: selectedCards });
+            } else {
+                console.log("deck not big enough")
+            }
         }
     });
 
@@ -95,6 +126,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     }
+
 
     // Listen for board updates
     socket.on("game_update", (data) => {
@@ -125,6 +157,10 @@ document.addEventListener('DOMContentLoaded', function () {
         // Update hands
         updateHands(data.hand1.hand, "hand1");
         updateHands(data.hand2.hand, "hand2");
+
+        // highlight turn hand
+
+        highlightCurrentTurn(data.current_turn)
 
         // Update board
         updateBoard(data.board, game_id);
@@ -203,6 +239,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 cardElement.classList.add("card", "small");
                 cardElement.textContent = card;
                 caravanElement.appendChild(cardElement);
+
 
                 // Check for bonus card at this position
                 // addBonusCard(boardData.bonus_cards, index, cardIndex, caravanElement);
@@ -339,7 +376,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (discardPile1 && discardPile1.length > 0) {
             const topCard = discardPile1[discardPile1.length - 1];
             const cardElement = document.createElement("div");
-            cardElement.classList.add("card", "small");
+            cardElement.classList.add("card");
             cardElement.textContent = topCard.face + topCard.suit;
             discardZone1.appendChild(cardElement);
         }
@@ -350,7 +387,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (discardPile2 && discardPile2.length > 0) {
             const topCard = discardPile2[discardPile2.length - 1];
             const cardElement = document.createElement("div");
-            cardElement.classList.add("card", "small");
+            cardElement.classList.add("card");
             cardElement.textContent = topCard.face + topCard.suit;
             discardZone2.appendChild(cardElement);
         }
@@ -444,7 +481,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            const [cardValue, caravanIndex, positionIndex] = bonusCard;
+            let [cardValue, caravanIndex, positionIndex] = bonusCard;
+
+            if (cardValue === 12) {
+                cardValue = "Q"
+            } else if (cardValue === 13) {
+                cardValue = "K"
+            }
 
             // Determine which caravan element to target
             const caravanElement = document.querySelector(`.caravan[data-index="${caravanIndex}"]`);
@@ -511,6 +554,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     this.textContent = `${selectedCard}`;  // Set the card text in the slot
                     this.classList.add("filled");  // Add a "filled" class for styling
                     this.dataset.card = selectedCard;  // Store the card data in the slot's dataset
+                    this.style.backgroundColor = "white";
+                    this.style.color = "black";
 
                     // Update the visual state of the card options (you may want to reset the selected card)
                     selectedCard = null;
@@ -576,5 +621,23 @@ document.addEventListener('DOMContentLoaded', function () {
             position: position
         });
     }
+
+    function highlightCurrentTurn(turn) {
+        // Reset the highlighted class for both hands
+        const hand1 = document.querySelector(".hand1");
+        const hand2 = document.querySelector(".hand2");
+    
+        // Remove the highlighted class from both hands
+        hand1.classList.remove("highlighted_hand");
+        hand2.classList.remove("highlighted_hand");
+    
+        // Add the highlighted class to the current hand based on the turn
+        if (turn === "1") {
+            hand1.classList.add("highlighted_hand");
+        } else if (turn === "2") {
+            hand2.classList.add("highlighted_hand");
+        }
+    }
+    
 
 });

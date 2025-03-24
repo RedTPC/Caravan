@@ -29,7 +29,7 @@ body {
 .content-container {
     max-width: 1200px;
     width: 100%;
-    margin-top: 120px; /* Increased space for the header */
+    margin-top: 20px; /* Increased space for the header */
     padding: 20px;
     display: flex;
     flex-direction: column;
@@ -247,9 +247,12 @@ a {
     border: 2px solid #ccc;
     scroll-snap-type: x mandatory;
     margin: 20px auto;
+    align-items: stretch; /* Ensure children stretch to fill the container vertically */
+    margin-top: 2em;
 }
 
-.deck-card-slot, .deck-card-option {
+
+.deck-card-slot {
     width: 80px;
     height: 120px;
     border: 2px dashed #888;
@@ -259,7 +262,22 @@ a {
     align-items: center;
     background-color: rgba(200, 200, 200, 0.3);
     cursor: pointer;
+
 }
+
+.deck-card-option {
+    width: 80px;
+    height: 120px;
+    border: 2px solid, black;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: white;
+    cursor: pointer;
+    color: black;
+}
+
 
 .deck-card-option {
     flex: 0 0 80px;
@@ -278,6 +296,8 @@ a {
     background-color: rgba(154, 101, 97, 0.9);
     padding: 10px;
     border-radius: 5px;
+    border: 1px solid white;
+
 }
 
 .hand1 h2, .hand2 h2 {
@@ -294,13 +314,32 @@ a {
     flex-direction: column;
     gap: 20px;
     margin: 20px 0;
+    /* align-items: center;
+    justify-content: center; */
+    margin-bottom: 2.8em;
 }
 
 .caravans1, .caravans2 {
     display: flex;
-    justify-content: space-around;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-right: 180px; /* Make room for the discard area */
+    position: relative;
+    align-items: center;
+    justify-content: center;
 }
 
+.caravan-values-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, auto); 
+    gap: 20px;
+    margin-right: 180px; /* Make room for the discard area */
+    position: relative;
+    margin-top: 1em;
+}
+
+/* Style for the individual caravan container */
 .caravan {
     width: 150px;
     min-height: 120px;
@@ -311,6 +350,7 @@ a {
     display: flex;
     flex-direction: column;
     align-items: center;
+    margin: 0 auto;
 }
 
 .caravan.won {
@@ -358,15 +398,14 @@ a {
     color: black;
 }
 
-.discard-areas {
-    display: flex;
-    justify-content: space-around;
-    margin: 20px 0;
-}
 
 .discard-pile {
+    display: flex;
     text-align: center;
     margin: 0 20px;
+    justify-content: right;
+    align-items: right;
+    margin-top: -10.5em;
 }
 
 .discard-zone {
@@ -375,11 +414,11 @@ a {
     border: 2px dashed #888;
     border-radius: 8px;
     display: flex;
-    justify-content: right;
-    align-items: right;
-    margin: 10px auto;
+    justify-content: center;
+    align-items: center;
     cursor: pointer;
     background-color: rgba(200, 200, 200, 0.3);
+    color: black;
 }
 
 .discard-zone:hover {
@@ -394,6 +433,8 @@ a {
     text-align: center;
     font-weight: bold;
     margin-top: 5px;
+    width: 100%;
+    display: block;
 }
 
 .card-container {
@@ -411,7 +452,6 @@ a {
     width: 40px;
     height: 60px;
     margin-left: 5px;
-    opacity: 0.8;
     position: relative;
     z-index: 2;
     box-shadow: 0 0 5px rgba(0,0,0,0.2);
@@ -422,7 +462,9 @@ a {
     justify-content: center;
     align-items: center;
     text-align: center;
+    color: black
 }
+
 
 .card-container .card {
     z-index: 1;
@@ -430,7 +472,7 @@ a {
 
 /* Save button for decks page */
 #saveDeckButton {
-    display: block;
+    display: flex;
     margin: 20px auto;
     padding: 15px 40px;
     font-size: 1.2em;
@@ -440,4 +482,14 @@ a {
 .game-board {
     margin-top: 20px;
     width: 100%;
+    display: block;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 2em;
+}
+
+.highlighted_hand {
+    padding: 10px;
+    /* border: 3px solid green; Solid green border */
+    box-shadow: 0 0 15px 5px rgba(15, 174, 7, 0.5), 0 0 30px 15px rgba(15, 174, 7, 0.3), 0 0 50px 25px rgba(15, 174, 7, 0.1);
 }

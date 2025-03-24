@@ -108,8 +108,9 @@ def decks():
 @socketio.on("save_deck")
 def save_deck(data):
     deck = data['selectedCards']
-    print(deck)
+    #print(deck)
     saveCustomDeck(session['username'], deck)
+    return redirect(url_for("index"))
 
 @login_required
 @socketio.on("deck_request_options")
@@ -121,7 +122,7 @@ def send_options():
         print(f"username {session["username"]}")
         db.execute("""SELECT * FROM decks WHERE username = ?""", (session["username"],))
         decks_as_json = db.fetchone()
-        print(decks_as_json)
+        #print(decks_as_json)
         if decks_as_json == None:
             return
 
@@ -169,10 +170,8 @@ def create_game():
     gamestate.getValues()
 
     # Add this line to send the initial game state
-    room = game_id
-    join_room(room)
     response_data = gamestate.to_dict()
-    emit("game_update", response_data, room=room)
+    emit("game_update", response_data)
     
     # Then redirect
     emit("redirect", {"url": f"/game/{game_id}"})
@@ -181,15 +180,13 @@ def create_game():
 @socketio.on("create_multiplayer_game")
 def create_multiplayer_game():
     game_id = ''.join([str(random.randint(0, 9)) for i in range(5)])
-    game_info = [True, session["username"], None]  # waiting_for_player, player1 username, player2 username
+    game_info = [True, session["username"], None, "multiplayer"]  # waiting_for_player, player1 username, player2 username
     
     gamestate = None
     active_games.append([gamestate, game_id, game_info])
     
-    # Join this socket to the game room
-    room = game_id
-    join_room(room)
-    
+    join_room(game_id)
+
     # Redirect the client
     emit("redirect", {"url": f"/game/{game_id}"})
 
@@ -197,12 +194,10 @@ def create_multiplayer_game():
 @socketio.on("join_multiplayer_game")
 def join_multiplayer_game(data):
     game_id = data['game_id']
-    room = game_id
-    
+
     for game in active_games:
         if game[1] == game_id and game[2][0] == True:
             # Join this socket to the game room
-            join_room(room)
             
             game[2][2] = session["username"]  # Set player2 username
             
@@ -223,13 +218,18 @@ def join_multiplayer_game(data):
             gamestate.getValues()
             
             game[0] = gamestate
-            
+
+            join_room(game_id)
+
             # Notify all clients in the room about the game update
             response_data = gamestate.to_dict()
-            emit("game_update", response_data, room=room, broadcast=True)
+            emit("game_update", response_data, room=game_id)
             
-            # Redirect the client
-            emit("redirect", {"url": f"/game/{game_id}"})
+            # Emit a specific event for the waiting player
+            emit("game_joined", {"game_id": game_id}, broadcast=True)
+            
+            # Redirect both players
+            emit("redirect", {"url": f"/game/{game_id}"}, room=game_id)
             return
             
     # Game not found or already full
@@ -237,15 +237,20 @@ def join_multiplayer_game(data):
 
 @app.route("/game/<game_id>")
 def game_page(game_id):
+    print("game page route loaded")
     # Check if the game exists
     for game in active_games:
         if game[1] == game_id:
             gamestate = game[0]
+
+            print(gamestate)
             
             if gamestate and gamestate.gametype == "multiplayer":
                 return render_template("multiplayer.html", game_id=game_id, gamestate=gamestate)
             elif gamestate and gamestate.gametype == "singleplayer":
                 return render_template("singleplayer.html", game_id=game_id, gamestate=gamestate)
+            elif gamestate and gamestate.gametype == "AI":
+                return render_template("AI.html", game_id=game_id, gamestate=gamestate)
             elif not gamestate:
                 # This is for waiting in multiplayer lobby
                 return render_template("waiting_room.html", game_id=game_id)
@@ -253,22 +258,53 @@ def game_page(game_id):
     # Game not found, redirect to index
     return redirect(url_for("index"))
 
+
+@socketio.on("request_game_state")
+def request_game_state(data):
+    game_id = data.get('game_id')
+
+    print("gamestate request recieved for ", game_id)
+    
+    print(active_games)
+    # Find the game in active_games
+    for game in active_games:
+        if game[1] == game_id:
+            gamestate = game[0]
+    if gamestate:
+        response_data = gamestate.to_dict()
+
+        print("\n\n response data ", response_data, "\n\n")
+        print("emmiting game update")
+        emit("game_update", response_data)
+    else:
+        emit("error", {"message": "Game not found"})
+
+
 @socketio.on('join_game_room')
 def on_join_game_room(data):
     game_id = data['game_id']
-    room = game_id
-    join_room(room)  # You'll need to add "from flask_socketio import join_room" at the top
-    
     # Find the game and send its current state
     for game in active_games:
         if game[1] == game_id:
             gamestate = game[0]
             if gamestate:
                 response_data = gamestate.to_dict()
-                emit("game_update", response_data, room=room)
+                emit("game_update", response_data)
+
+@socketio.on('cancel_room_button')
+def cancel_room_button(data):
+    game_id = data['game_id']
+    
+    # Find the game and send its current state
+    for game in active_games:
+        if game[1] == game_id:
+            active_games.remove(game)
+            return redirect(url_for("index"))
 
 @socketio.on("create_game_ai")
 def create_game_ai():
+
+    print("create AI game called")
 
     # load custom deck
     if "preferred_deck" in session:
@@ -276,27 +312,26 @@ def create_game_ai():
         custom_deck1 = loadCustomDeck(session['username'], session['preferred_deck'])
         custom_deck2 = loadCustomDeck(session['username'], session['preferred_deck'])
 
-        print(custom_deck1)        
-        print(custom_deck2)
-
     else:
         custom_deck2 = False
         custom_deck1 = False
 
     gamestate = Game(custom_deck1, custom_deck2)
-    gamestate.startGame()
+    gamestate.startGame()   
     gamestate.game_started = True
     gamestate.gametype = "AI"
     game_id = ''.join([str(random.randint(0, 9)) for i in range(5)])
     gamestate.game_id = game_id
-    active_games.append([gamestate, game_id, gamestate.gametype])
+    active_games.append([gamestate, game_id])  
     gamestate.getValues()
 
+    # Add this line to send the initial game state
+
     response_data = gamestate.to_dict()
-    #print(f"created ai game, id={game_id}")
-    #print(f"active games: {active_games}")
- 
-    emit("game_update", response_data, broadcast=True)
+    emit("game_update", response_data)
+    
+    # Then redirect
+    emit("redirect", {"url": f"/game/{game_id}"})
 
 @socketio.on("place_card")
 def handle_place_card(data):
@@ -305,13 +340,16 @@ def handle_place_card(data):
     game_id = data['game_id']
     #print(game_id)
 
+    game_found = False
     for game in active_games:
         print(active_games)
         if game[1] == game_id:
             gamestate = game[0]
-        else:
-            print("game not found in active_games")
-            return
+            print("game found, setting gamestate...")
+            game_found = True
+    if game_found == False:
+        print("game not found in active_games", active_games, game_id)
+        return
 
     if not gamestate:
         #print("no gamestate, returning..")
@@ -334,6 +372,9 @@ def handle_place_card(data):
     # DETERMINE IF IT IS GAME VS AI, IF IT IS, PREVENT PLAYER 2 FROM MAKING A MOVE
     if gamestate.gametype == "AI":
         if player == "2":
+            return
+        if gamestate.checkForWin() != "":
+            print("game is over, returning")
             return
     
     # MULTIPLAYER GAMES
@@ -462,11 +503,26 @@ def handle_place_card(data):
 
 @socketio.on("discard_card")
 def handle_discard_card(data):
-    global gamestate
-    if not gamestate:
-        return        
-
+    print("discard card called")
     hand_index = data["hand_index"]
+
+    game_id = data['game_id']
+
+    game_found = False
+    for game in active_games:
+        print(active_games)
+        if game[1] == game_id:
+            gamestate = game[0]
+            print("game found, setting gamestate...")
+            game_found = True
+    if game_found == False:
+        print("game not found in active_games", active_games, game_id)
+        return
+
+
+    if not gamestate:
+        print("no gamestate, returning...")
+        return        
 
     # Determine player based on hand index
     if gamestate.gametype == "singleplayer" or gamestate.gametype == "AI":
@@ -481,11 +537,13 @@ def handle_discard_card(data):
         if player == "2":
             return
         
-      # MULTIPLAYER GAMES
+    # MULTIPLAYER GAMES
     if gamestate.gametype == "multiplayer":
         if gamestate.player1 == session["username"]:
             player = "1"
             #print(f"setting player to 1")
+            if hand_index > 7:
+                return
 
             
         elif gamestate.player2 == session["username"]:
@@ -672,17 +730,20 @@ def place_side_card(data):
 
 @socketio.on("make_ai_move")
 def make_ai_move(data):
-    global gamestate
     game_id = data
-    print(game_id)
+    print("game id", game_id)
+    print("game id type", type(game_id))
+
     print("\n starting ai move \n ")
 
+    game_found = False
     for game in active_games:
         if game[1] == game_id:
             gamestate = game[0]
-        else:
-            print("game not found in active_games")
-            return
+            game_found = True
+    if game_found == False:
+        print("game not found in active_games", active_games, game_id)
+        return
         
     if not gamestate:
         print("no gamestate in ai, returning...")
