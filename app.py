@@ -246,11 +246,11 @@ def game_page(game_id):
             print(gamestate)
             
             if gamestate and gamestate.gametype == "multiplayer":
-                return render_template("multiplayer.html", game_id=game_id, gamestate=gamestate)
+                return render_template("multiplayer.html", game_id=game_id, gamestate=gamestate, current_user=session["username"])
             elif gamestate and gamestate.gametype == "singleplayer":
-                return render_template("singleplayer.html", game_id=game_id, gamestate=gamestate)
+                return render_template("singleplayer.html", game_id=game_id, gamestate=gamestate, current_user=session["username"])
             elif gamestate and gamestate.gametype == "AI":
-                return render_template("AI.html", game_id=game_id, gamestate=gamestate)
+                return render_template("AI.html", game_id=game_id, gamestate=gamestate, current_user=session["username"])
             elif not gamestate:
                 # This is for waiting in multiplayer lobby
                 return render_template("waiting_room.html", game_id=game_id)
@@ -389,6 +389,8 @@ def handle_place_card(data):
         elif gamestate.player2 == session["username"]:
             #print(f"setting player to 2")
             player = "2"
+            if hand_index <= 7:
+                return
             hand_index -= 8
     
     # PLAYER 1 VARS
@@ -471,7 +473,9 @@ def handle_place_card(data):
             if gamestate.opening_round_filled[caravan_index+3] == False:
                 gamestate.opening_round_filled[caravan_index+3] = True
                 gamestate.placeCard(player, hand_index, caravan_index)
+                print("flipping turn")
                 gamestate.flipTurn()
+
 
     else:
         print("It's Not your turn!")
@@ -901,7 +905,8 @@ def make_ai_move(data):
         # Send updated game state to all clients
 
         time.sleep(2)
-        emit("game_update", response_data, broadcast=True)
+        print("emmitting game update", gamestate.current_turn)
+        emit("game_update", response_data, room=game_id)
         
     except Exception as e:
         #print(f"Error during AI move: {e}")

@@ -355,12 +355,12 @@ a {
 
 .caravan.won {
     border-color: #4CAF50;
-    background-color: rgba(76, 175, 80, 0.1);
+    /* background-color: rgba(76, 175, 80, 0.1); */
 }
 
 .caravan.lost {
     border-color: #f44336;
-    background-color: rgba(244, 67, 54, 0.1);
+    /* background-color: rgba(244, 67, 54, 0.1); */
 }
 
 .card {
@@ -376,6 +376,10 @@ a {
     cursor: pointer;
     font-weight: bold;
 }
+
+.card.hidden {
+    background-color: grey;
+    text-indent: -9999px;}
 
 .card.selected {
     border: 3px solid #4CAF50;

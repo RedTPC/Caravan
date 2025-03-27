@@ -11,3 +11,5 @@ issues with the order being set and then having a jack remove stuff
 better validation for custom decks
 
 custom names for custom decks
+
+removing jack doesnt recalculate the direction

@@ -1,6 +1,14 @@
 document.addEventListener('DOMContentLoaded', function () {
     const socket = io();
     let selectedCard = null;
+    
+    // Get the element with the 'user-info' id
+    const userInfoElement = document.getElementById("user-info");
+
+    // Access the current_user from the 'data-username' attribute
+    const current_user = userInfoElement ? userInfoElement.dataset.username : null;
+
+    console.log("Current User:", current_user);
 
     socket.on("redirect", function (data) {
         window.location.href = data.url;  // Redirects to Flask route
@@ -155,8 +163,25 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById("gameContainer").style.display = "block";
 
         // Update hands
-        updateHands(data.hand1.hand, "hand1");
-        updateHands(data.hand2.hand, "hand2");
+        console.log("")
+        console.log(current_user)
+        console.log(data.player1, data.player2)
+        console.log("")
+
+
+        console.log(data)
+        
+        if (current_user === data.player1) {
+            updateHands(data.hand1.hand, "hand1", false); // hide=false
+            updateHands(data.hand2.hand, "hand2", true); // hide = true
+        } else if (current_user === data.player2) {
+            updateHands(data.hand1.hand, "hand1", true); // hide=true
+            updateHands(data.hand2.hand, "hand2", false); // hide = false
+        } else {
+            updateHands(data.hand1.hand, "hand1", false); // hide=false
+            updateHands(data.hand2.hand, "hand2", false); // hide = false       
+        }
+
 
         // highlight turn hand
 
@@ -214,7 +239,8 @@ document.addEventListener('DOMContentLoaded', function () {
         } else { console.log("not ai move") }
     });
 
-    function updateHands(handData, handClass) {
+    function updateHands(handData, handClass, hide) {
+        console.log("update hands called")
         const handElement = document.querySelector(`.${handClass}`);
         // Keep the heading
         handElement.innerHTML = "";
@@ -222,6 +248,10 @@ document.addEventListener('DOMContentLoaded', function () {
         handData.forEach((card, index) => {
             const cardElement = document.createElement("div");
             cardElement.classList.add("card");
+            if (hide === true) {
+                console.log("hide=true")
+                cardElement.classList.add("hidden")
+            }
             cardElement.textContent = card.face + card.suit;
             cardElement.dataset.card = card.face + card.suit;
             cardElement.dataset.index = index;
