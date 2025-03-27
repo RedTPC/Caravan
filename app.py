@@ -183,7 +183,11 @@ def create_multiplayer_game():
     game_info = [True, session["username"], None, "multiplayer"]  # waiting_for_player, player1 username, player2 username
     
     gamestate = None
-    active_games.append([gamestate, game_id, game_info])
+    if "preferred_deck" in session:
+        active_games.append([gamestate, game_id, game_info, (session["username"], session["preferred_deck"])])
+    else:
+        active_games.append([gamestate, game_id, game_info])
+
     
     join_room(game_id)
 
@@ -201,9 +205,14 @@ def join_multiplayer_game(data):
             
             game[2][2] = session["username"]  # Set player2 username
             
-            # Initialize game with both players
-            custom_deck1, custom_deck2 = False, False
-            
+            if len(game) > 3:
+                custom_deck1 = loadCustomDeck(*game[3])
+                print("player 1 deck - ", custom_deck1)
+
+            if "preferred_deck" in session:
+                custom_deck2 = loadCustomDeck(session["username"], session["preferred_deck"])
+                print("player 2 deck - ", custom_deck2)
+
             # Check if players have preferred decks
             # (This part could be improved depending on your exact implementation)
             
@@ -867,11 +876,13 @@ def make_ai_move(data):
             else:
                 print(f"Invalid move: card: {placed_card_value2}, caravan {caravan_index}")
 
-
         elif gamestate.numturns < 6:
             # OPENING ROUND 3 TURNS EACH
             if hand_index < len(gamestate._hand2.getHand()) and placed_card_value2 < 11:
-                if gamestate.opening_round_filled[caravan_index+3] == False:
+                # Find the first unfilled caravan for player 2 (indices 3, 4, 5)
+                unfilled_caravans = [i for i in range(3, 6) if not gamestate.opening_round_filled[i]]
+                
+                if unfilled_caravans and caravan_index == unfilled_caravans[0] - 3:
                     gamestate.opening_round_filled[caravan_index+3] = True
                     gamestate.placeCard(player, hand_index, caravan_index)
                     gamestate.flipTurn()

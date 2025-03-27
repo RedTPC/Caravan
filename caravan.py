@@ -179,6 +179,8 @@ class Game():
         self.caravan_values2 = [0, 0, 0]
         self.waiting_for_player = False
         self.gametype = None
+        self.custom_deck1 = False
+        self.custom_deck2 = False
 
     def ShuffleDecks(self):
         self._deck1.shuffle()
