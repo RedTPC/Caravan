@@ -4,6 +4,10 @@ import json
 def loadCustomDeck(username, deck_number):
     # takes deck number as "deck1"
     # print(f"deck number: {deck_number}, username: {username}")
+
+    if deck_number == "deck0":
+        return False
+
     connection = sqlite3.connect("caravan.db")
     db = connection.cursor()
     db.execute(f"""SELECT {deck_number} FROM decks WHERE username = ?;""", (username,))

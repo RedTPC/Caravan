@@ -1,3 +1,58 @@
+const cardMap = {
+    "A♣": "card_1.png",
+    "A♦": "card_2.png",
+    "A♥": "card_3.png",
+    "A♠": "card_4.png",
+    "2♣": "card_5.png",
+    "2♦": "card_6.png",
+    "2♥": "card_7.png",
+    "2♠": "card_8.png",
+    "3♣": "card_9.png",
+    "3♦": "card_10.png",
+    "3♥": "card_11.png",
+    "3♠": "card_12.png",
+    "4♣": "card_13.png",
+    "4♦": "card_14.png",
+    "4♥": "card_15.png",
+    "4♠": "card_16.png",
+    "5♣": "card_17.png",
+    "5♦": "card_18.png",
+    "5♥": "card_19.png",
+    "5♠": "card_20.png",
+    "6♣": "card_21.png",
+    "6♦": "card_22.png",
+    "6♥": "card_23.png",
+    "6♠": "card_24.png",
+    "7♣": "card_25.png",
+    "7♦": "card_26.png",
+    "7♥": "card_27.png",
+    "7♠": "card_28.png",
+    "8♣": "card_29.png",
+    "8♦": "card_30.png",
+    "8♥": "card_31.png",
+    "8♠": "card_32.png",
+    "9♣": "card_33.png",
+    "9♦": "card_34.png",
+    "9♥": "card_35.png",
+    "9♠": "card_36.png",
+    "10♣": "card_37.png",
+    "10♦": "card_38.png",
+    "10♥": "card_39.png",
+    "10♠": "card_40.png",
+    "J♣": "card_41.png",
+    "J♦": "card_42.png",
+    "J♥": "card_43.png",
+    "J♠": "card_44.png",
+    "Q♣": "card_45.png",
+    "Q♦": "card_46.png",
+    "Q♥": "card_47.png",
+    "Q♠": "card_48.png",
+    "K♣": "card_49.png",
+    "K♦": "card_50.png",
+    "K♥": "card_51.png",
+    "K♠": "card_52.png"
+  };
+
 document.addEventListener('DOMContentLoaded', function () {
     const socket = io();
     let selectedCard = null;
@@ -203,6 +258,7 @@ document.addEventListener('DOMContentLoaded', function () {
         attachCaravanCardListeners(game_id);
         attachDiscardListeners(game_id);
 
+        addImages();
 
 
         // Update caravan status if applicable
@@ -237,6 +293,7 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log("making ai move")
             socket.emit("make_ai_move", game_id);
         } else { console.log("not ai move") }
+
     });
 
     function updateHands(handData, handClass, hide) {
@@ -616,6 +673,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 dropdown.innerHTML = ""
                 // Clear existing options
 
+                // ADD IN THE DEFAULT PARAM
+                let opt = document.createElement("option");
+                opt.value = "deck0";
+                opt.textContent = "Default";
+                dropdown.appendChild(opt);
+
                 options.forEach(option => {
                     let opt = document.createElement("option");
                     opt.value = option;
@@ -667,6 +730,40 @@ document.addEventListener('DOMContentLoaded', function () {
         } else if (turn === "2") {
             hand2.classList.add("highlighted_hand");
         }
+    }
+
+    function addImages() {
+        document.querySelectorAll('.card').forEach(card => {
+            console.log("big cardrecognised")
+
+            const cardCode = card.getAttribute('data-card');
+            const img = cardMap[cardCode];
+            if (img) {
+              card.style.backgroundImage = `url('../static/images/cards/${img}')`;
+              card.style.backgroundSize = "100% 100%";
+              card.style.width = "105px";
+              card.style.height = "150px";
+              card.style.borderRadius = "8px";
+              card.style.backgroundPosition = "center";
+
+            }
+
+          });
+
+          document.querySelectorAll('.card.small').forEach(card => {
+            console.log("small cardrecognised")
+            const cardCode = card.textContent;
+            const img = cardMap[cardCode];
+            if (img) {
+                
+                card.style.backgroundImage = `url('../static/images/cards/${img}')`;
+                card.style.backgroundSize = "cover";
+                card.style.width = "52.5px";
+                card.style.height = "75px";
+                card.style.borderRadius = "8px";
+            }
+
+          });
     }
     
 

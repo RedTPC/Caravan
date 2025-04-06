@@ -109,6 +109,10 @@ def decks():
 def save_deck(data):
     deck = data['selectedCards']
     #print(deck)
+
+    if len(deck) < 30:
+        return 
+
     saveCustomDeck(session['username'], deck)
     return redirect(url_for("index"))
 
