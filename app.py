@@ -208,13 +208,19 @@ def join_multiplayer_game(data):
             if len(game) > 3:
                 custom_deck1 = loadCustomDeck(*game[3])
                 print("player 1 deck - ", custom_deck1)
+            else:
+                custom_deck1 = False
 
             if "preferred_deck" in session:
                 custom_deck2 = loadCustomDeck(session["username"], session["preferred_deck"])
                 print("player 2 deck - ", custom_deck2)
 
+            else:
+                custom_deck2 = False
             # Check if players have preferred decks
             # (This part could be improved depending on your exact implementation)
+
+            print(custom_deck1, custom_deck2)
             
             gamestate = Game(custom_deck1, custom_deck2)
             gamestate.startGame()
@@ -310,6 +316,7 @@ def cancel_room_button(data):
             active_games.remove(game)
             return redirect(url_for("index"))
 
+@login_required
 @socketio.on("create_game_ai")
 def create_game_ai():
 
